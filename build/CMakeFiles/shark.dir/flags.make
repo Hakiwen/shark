@@ -6,5 +6,5 @@ CXX_FLAGS =   -std=c++0x -g -O3
 
 CXX_DEFINES = 
 
-CXX_INCLUDES = -I/usr/include/opencv -I/usr/local/cuda/include -I/usr/local/zed/include -I/home/nvidia/Shark/include 
+CXX_INCLUDES = -I/usr/include/opencv -I/usr/local/cuda-8.0/include -I/usr/local/zed/include -I/home/nvidia/Shark/include 
 

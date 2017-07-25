@@ -124,6 +124,36 @@ shark/fast:
 .PHONY : shark/fast
 
 # target to build an object file
+src/OurLine.o:
+	$(MAKE) -f CMakeFiles/shark.dir/build.make CMakeFiles/shark.dir/src/OurLine.o
+.PHONY : src/OurLine.o
+
+# target to preprocess a source file
+src/OurLine.i:
+	$(MAKE) -f CMakeFiles/shark.dir/build.make CMakeFiles/shark.dir/src/OurLine.i
+.PHONY : src/OurLine.i
+
+# target to generate assembly for a file
+src/OurLine.s:
+	$(MAKE) -f CMakeFiles/shark.dir/build.make CMakeFiles/shark.dir/src/OurLine.s
+.PHONY : src/OurLine.s
+
+# target to build an object file
+src/OurTarget.o:
+	$(MAKE) -f CMakeFiles/shark.dir/build.make CMakeFiles/shark.dir/src/OurTarget.o
+.PHONY : src/OurTarget.o
+
+# target to preprocess a source file
+src/OurTarget.i:
+	$(MAKE) -f CMakeFiles/shark.dir/build.make CMakeFiles/shark.dir/src/OurTarget.i
+.PHONY : src/OurTarget.i
+
+# target to generate assembly for a file
+src/OurTarget.s:
+	$(MAKE) -f CMakeFiles/shark.dir/build.make CMakeFiles/shark.dir/src/OurTarget.s
+.PHONY : src/OurTarget.s
+
+# target to build an object file
 src/main.o:
 	$(MAKE) -f CMakeFiles/shark.dir/build.make CMakeFiles/shark.dir/src/main.o
 .PHONY : src/main.o
@@ -147,6 +177,12 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... shark"
+	@echo "... src/OurLine.o"
+	@echo "... src/OurLine.i"
+	@echo "... src/OurLine.s"
+	@echo "... src/OurTarget.o"
+	@echo "... src/OurTarget.i"
+	@echo "... src/OurTarget.s"
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"

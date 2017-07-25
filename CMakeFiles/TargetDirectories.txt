@@ -1,3 +1,0 @@
-/home/nvidia/Shark/CMakeFiles/edit_cache.dir
-/home/nvidia/Shark/CMakeFiles/rebuild_cache.dir
-/home/nvidia/Shark/CMakeFiles/shark.dir

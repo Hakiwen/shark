@@ -1,17 +1,18 @@
 
 
-#include <iostream>
+
 #include <string>
 #include <iomanip>
 #include <sstream>
 #include <linux/input.h>
 #include <fcntl.h>
 
+#include "OurTarget.h"
+
 #include <sl/Camera.hpp>
 
-#include <opencv2/opencv.hpp>
-#include <opencv2/core.hpp>
-#include <opencv2/imgproc.hpp>
+
+
 #include <opencv2/highgui.hpp>
 
 #include <opencv2/video/tracking.hpp>
@@ -68,13 +69,20 @@ int main(int argc, char *argv[])
 	//Line finding params
 	float rhod = 1;
 	float th = 180;
-	float thresh = 80;
+	float thresh = 20;
 	float range = 20; //in degrees
+	float desiredAngle = 90;
 	int searching = 1;
 	float depth_value;
+	int numTargets = 0;
 	
-	int minLineLengthP = 80;
-	int maxLineGapP = 3;
+	int cannyThresh1 = 50;
+	int cannyThresh2 = 200;
+	
+	int minLineLengthP = 100;
+	int maxLineGapP = 10;
+	int maxLineSeperation = 20;
+	float maxAngleSeperation = 10;
 
 	
 	int startXOfRect = 0;
@@ -89,29 +97,8 @@ int main(int argc, char *argv[])
 	int isTracked = false;
 	int framesSinceSeen = 0;
 	double ticks = 0;
-	/*
-	//user sets rhod, the magnitude precision for the hough transform
-	cout << "rho definition\n";
-	cin >> rhod;
-
-	//user sets th, the angle precision for the hough transform
-	cout << "theta\n";
-	cin >> th;
-
-	//set thresh, the vote threshold for the hough transform
-	//greater=less lines
-	cout << "threshold\n";
-	cin >> thresh;
-
-	//set range, the range of angles in radians/pi around horizontal for lines
-	cout << "range\n";
-	cin >> range;
-
-	//set transform to use
-	cout << "0 for HL, 1 for HLP, 2 for HC\n";
-	cin >> searching;
-	*/
-
+	
+	Point lastMidpoint = Point(0,0);
 
 	//CV Objects
 	sl::Mat inFrame_zl, inFrame_zr, inFrame_zd;
@@ -160,13 +147,13 @@ int main(int argc, char *argv[])
     // [ 0 0 1 0 0 0 0 0 ]
     // [ 0 0 0 0 0 0 1 0 ]
     // [ 0 0 0 0 0 0 0 1 ]
-	lineTrackingKF.measurementMatrix = cv::Mat::zeros(measureDim, stateDim, typeKF);
-	lineTrackingKF.measurementMatrix.at<float>(0) = 1.0f;
-	lineTrackingKF.measurementMatrix.at<float>(9) = 1.0f;
-	lineTrackingKF.measurementMatrix.at<float>(18) = 1.0f;
-	lineTrackingKF.measurementMatrix.at<float>(30) = 1.0f;
-	lineTrackingKF.measurementMatrix.at<float>(39) = 1.0f;
-	// Process Noise Covariance Matrix Q
+    lineTrackingKF.measurementMatrix = cv::Mat::zeros(measureDim, stateDim, typeKF);
+    lineTrackingKF.measurementMatrix.at<float>(0) = 1.0f;
+    lineTrackingKF.measurementMatrix.at<float>(9) = 1.0f;
+    lineTrackingKF.measurementMatrix.at<float>(18) = 1.0f;
+    lineTrackingKF.measurementMatrix.at<float>(30) = 1.0f;
+    lineTrackingKF.measurementMatrix.at<float>(39) = 1.0f;
+      // Process Noise Covariance Matrix Q
       // [ Ex   0   0     0     0      0     0     0  ]
       // [ 0    Ey  0     0     0      0     0     0  ]
       // [ 0    0   Ez    0     0      0     0     0  ]
@@ -212,7 +199,7 @@ int main(int argc, char *argv[])
 			cout << "Blank frame \n";
 			return -1;
 		}
-		cout<< isTracked <<endl;
+		//cout<< isTracked <<endl;
 		if (isTracked)
 		{
 			
@@ -250,17 +237,11 @@ int main(int argc, char *argv[])
 			else
 				rowsOfRect = inFrame.rows - startYOfRect;
 			
-			if((startYOfRect > 0) && (startXOfRect > 0) && (colsOfRect > 0) && (rowsOfRect > 0))
-			{
+			
 			  rectangle(inFrameCopy, Point(startXOfRect, startYOfRect), Point(startXOfRect + colsOfRect, startYOfRect + rowsOfRect), Scalar(255, 255, 255));
 			  putText(inFrameCopy, to_string(state.at<float>(2)), Point(300, 300), FONT_HERSHEY_SIMPLEX, 1, Scalar(0, 0 , 255));
 			  inFrame(cv::Rect(startXOfRect, startYOfRect, colsOfRect, rowsOfRect)).copyTo(inFrameTemp);
-			}
-			else
-			{
-			  isTracked = false;
-			  inFrame.copyTo(inFrameTemp);
-			}
+			
 			
 		  
 		}
@@ -277,33 +258,37 @@ int main(int argc, char *argv[])
 		
 
 		//Finds edges in the input frame
-		Canny(inFrameTemp, outFrameTemp, 50, 200, 3);
+		Canny(inFrame, outFrameTemp, cannyThresh1, cannyThresh2, 3);
 		//converts image color system to a meaningful output form
 		cvtColor(outFrameTemp, outFrame, COLOR_GRAY2BGR);
 	    
 		//If the line to track has not yet been selected/not tracking    
-		cout<<"startXOfRect: " << startXOfRect << " startYOfRect: " << startYOfRect << " cols: " << colsOfRect << " rows: " << rowsOfRect << endl;
+		//cout<<"startXOfRect: " << startXOfRect << " startYOfRect: " << startYOfRect << " cols: " << colsOfRect << " rows: " << rowsOfRect << endl;
 		//cout<< inFrameTemp;
 		HoughLinesP( outFrameTemp, linesP, rhod, CV_PI/th, thresh, minLineLengthP, maxLineGapP);
 		    
 		//size_t vL= 0;
 		if (linesP.size() > 0)
 		{
+			OurLine ourLines[linesP.size()];
+			OurTarget ourTargets[linesP.size()*linesP.size()];
+			numTargets = 0;
+			
 			for( size_t i = 0; i < linesP.size(); i++ )
 			{
-				Vec4i currentLineP;
-				if (isTracked)
-				{
+				/*Vec4i currentLineP;
+				//if (isTracked)
+				//{
 				  
-				  for( size_t n = 0; n < 4; n ++)
-				  {
+				for( size_t n = 0; n < 4; n ++)
+				{
 					  if ((n % 2) == 0)
-					      currentLineP[n] = linesP[i][n] + startXOfRect;
+					      currentLineP[n] = linesP[i][n];
 					  else
-					      currentLineP[n] = linesP[i][n] + startYOfRect;
-				  }
+					      currentLineP[n] = linesP[i][n];
 				}
-				else
+				//}
+				/*else
 				{
 				  
 				  for( size_t n = 0; n < 4; n ++)
@@ -313,74 +298,93 @@ int main(int argc, char *argv[])
 					  else
 					      currentLineP[n] = linesP[i][n];
 				  }
-				}
-				int lesserX = min(currentLineP[2], currentLineP[0]);
-				int greaterX = max(currentLineP[2], currentLineP[0]);
-				int lesserY = min(currentLineP[1], currentLineP[3]);
-				int greaterY = max(currentLineP[1], currentLineP[3]);
-				Point midPoint((greaterX - lesserX)/2 + lesserX, (greaterY - lesserY)/2 + lesserY);
-				/*if(abs(midPoint.x) > 700 || abs(midPoint.y) > 400)
+				}*/
+				
+				ourLines[i] = OurLine(linesP[i]);
+				//line(inFrameCopy, Point(linesP[i][0], linesP[i][1]), Point( linesP[i][2], linesP[i][3]), Scalar(0,255,255), 3 , 8);
+				//cout<<"left Pt1: " << Point(linesP[i][0], linesP[i][1]) << " left Pt2: "<< Point( linesP[i][2], linesP[i][3]) << endl;
+				Vec4i tempLine = ourLines[i].getCvLine();
+				for (size_t n = 0; n < i; n ++)
 				{
-				  cout<<"lesserX: " << lesserX <<" lesserY: " << lesserY << " greaterX: " << greaterX << " greaterY "<< greaterY << endl;
-				  cout<<"bad measurement" << endl;
-				  return 0;
+				  //cout<<"Line object size: " << sizeof(OurLine) << endl;
+				  ourTargets[i*linesP.size() + n] = OurTarget(ourLines[i], ourLines[n], maxAngleSeperation, maxLineSeperation, desiredAngle, range);
+				  //line(inFrameCopy, ourLines[i].getMidPoint(), ourLines[n].getMidPoint(), Scalar(0, 255,255), 3, 8 );
+				  if (ourTargets[i*linesP.size() + n].getIsValidPair())
+				  {
+				    numTargets ++;
+				    OurTarget ourTrueTargets = ourTargets[i*linesP.size() + n];
+				    Point midPoint = ourTrueTargets.getMidPoint();
+				    
+				
+			
+				    cout<< "Number of Targets Found: " << numTargets << endl;
+				    if(numTargets > 0 && ((lastMidpoint.x - midPoint.x)*(lastMidpoint.x - midPoint.x) + (lastMidpoint.y - midPoint.y)*(lastMidpoint.y - midPoint.y)) > 100)
+				    {
+					    //for(size_t q = 0; q < numTargets; q++)
+					    //{
+					    //if ((comm[i] > (90 - range)) && (angleD[i] < (90 + range)) || (angleD[i] > (-90 - range)) && (angleD[i] < (-90 + range)))
+					    //{
+						    cv::Mat adjustedLines = ourTrueTargets.getAdjustedLines();
+						    //cout<< "Pt1: " << Point(ourTrueTargets.getOutLine1()[0],ourTrueTargets.getOutLine1()[1]) << "Pt2: " << Point(ourTrueTargets.getOutLine1()[2],ourTrueTargets.getOutLine1()[3]) << endl;
+						    //line(inFrameCopy, Point(currentLineP[0], currentLineP[1]), Point(currentLineP[2], currentLineP[3]), Scalar(0,0,255), 3, 8 );
+						    //line(inFrameCopy, Point(ourTrueTargets.getOutLine1()[0],ourTrueTargets.getOutLine1()[1]), Point(ourTrueTargets.getOutLine1()[2],ourTrueTargets.getOutLine1()[3]) , Scalar(0,0,255), 3, 8);
+						    //line(inFrameCopy, Point(ourTrueTargets.getOutLine2()[0],ourTrueTargets.getOutLine2()[1]), Point(ourTrueTargets.getOutLine2()[2],ourTrueTargets.getOutLine2()[3]), Scalar(0,0,255), 3, 8);
+						    inFrame_zd.getValue(midPoint.x, midPoint.y, & depth_value);
+						    
+						    RotatedRect rRect = ourTrueTargets.getRectTarget();
+						    Point2f vertices[4];
+						    rRect.points(vertices);
+						    for (int i = 0; i < 4; i++)
+							line(inFrameCopy, vertices[i], vertices[(i+1)%4], Scalar(0,255,0));
+						    
+						    
+						    framesSinceSeen = 0;
+						    measurement.at<float>(0) = midPoint.x;
+						    measurement.at<float>(1) = midPoint.y;
+						    measurement.at<float>(2) = depth_value;
+						    measurement.at<float>(3) = ourTrueTargets.getWidth();
+						    measurement.at<float>(4) = ourTrueTargets.getLength();
+						    cout << "Angle:" << ourTrueTargets.getOrientation() << endl;
+						    cout<< "Measurement:" << measurement << endl;
+						    if (!isTracked)
+						    {
+						      lineTrackingKF.errorCovPre.at<float>(0) = 1;
+						      lineTrackingKF.errorCovPre.at<float>(9) = 1;
+						      lineTrackingKF.errorCovPre.at<float>(18) = 1;
+						      lineTrackingKF.errorCovPre.at<float>(27) = 1;
+						      lineTrackingKF.errorCovPre.at<float>(36) = 1;
+						      lineTrackingKF.errorCovPre.at<float>(45) = 1;
+						      lineTrackingKF.errorCovPre.at<float>(54) = 1;
+						      lineTrackingKF.errorCovPre.at<float>(63) = 1;
+						      
+						      state.at<float>(0) = measurement.at<float>(0);
+						      state.at<float>(1) = measurement.at<float>(1);
+						      state.at<float>(2) = measurement.at<float>(2);
+						      state.at<float>(3) = 0;
+						      state.at<float>(4) = 0;
+						      state.at<float>(5) = 0;
+						      state.at<float>(6) = measurement.at<float>(3);
+						      state.at<float>(7) = measurement.at<float>(4);
+						      
+						      lineTrackingKF.statePost = state;
+						    
+						    
+						      cout<<"Initializing filter" << endl;
+						      
+						    }
+						    else
+						    {
+						      lineTrackingKF.correct(measurement);
+						      cout<<"Correcting Estimate" << endl;
+						    }
+					    //}
+					      //}
+					isTracked = true;   
+				    }
+				  }
+				  
 				}
-				*/
-				float angleP = atan2((greaterY - lesserY),(greaterX - lesserX));
-				float angleD = angleP*(180/CV_PI);
-				int currentWidth = greaterX - lesserX;
-				int currentHeight = greaterY - lesserY;
-				   
-				cout << "Midpoint: (" << midPoint.x << "," << midPoint.y << ")\n";
-				if ((angleD > (90 - range)) && (angleD < (90 + range)) || (angleD > (-90 - range)) && (angleD < (-90 + range)))
-				{
-    
-					line(inFrameCopy, Point(currentLineP[0], currentLineP[1]), Point(currentLineP[2], currentLineP[3]), Scalar(0,0,255), 3, 8 );
-					inFrame_zd.getValue(midPoint.x, midPoint.y, & depth_value);
-					
-					framesSinceSeen = 0;
-					measurement.at<float>(0) = midPoint.x;
-					measurement.at<float>(1) = midPoint.y;
-					measurement.at<float>(2) = depth_value;
-					measurement.at<float>(3) = currentWidth;
-					measurement.at<float>(4) = currentHeight;
-					cout << "Angle:" << angleP*(180/CV_PI) << endl;
-					cout<< "Measurement:" << measurement << endl;
-					if (!isTracked)
-					{
-					  lineTrackingKF.errorCovPre.at<float>(0) = 1;
-					  lineTrackingKF.errorCovPre.at<float>(9) = 1;
-					  lineTrackingKF.errorCovPre.at<float>(18) = 1;
-					  lineTrackingKF.errorCovPre.at<float>(27) = 1;
-					  lineTrackingKF.errorCovPre.at<float>(36) = 1;
-					  lineTrackingKF.errorCovPre.at<float>(45) = 1;
-					  lineTrackingKF.errorCovPre.at<float>(54) = 1;
-					  lineTrackingKF.errorCovPre.at<float>(63) = 1;
-					  
-					  state.at<float>(0) = measurement.at<float>(0);
-					  state.at<float>(1) = measurement.at<float>(1);
-					  state.at<float>(2) = measurement.at<float>(2);
-					  state.at<float>(3) = 0;
-					  state.at<float>(4) = 0;
-					  state.at<float>(5) = 0;
-					  state.at<float>(6) = measurement.at<float>(3);
-					  state.at<float>(7) = measurement.at<float>(4);
-					  
-					  lineTrackingKF.statePost = state;
-					 
-					 
-					  cout<<"Initializing filter" << endl;
-					  
-					}
-					else
-					{
-					  lineTrackingKF.correct(measurement);
-					  cout<<"Correcting Estimate" << endl;
-					}
-				}
-			    }
-			    isTracked = true;
-			     
+			}
 		}
 		else
 		{
