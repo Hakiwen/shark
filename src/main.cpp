@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
 	Camera zed;
 
 	InitParameters init_params;
-	init_params.camera_resolution = RESOLUTION_HD720;
+	init_params.camera_resolution = RESOLUTION_VGA;
 	init_params.camera_fps = 15;
 	init_params.coordinate_units = UNIT_MILLIMETER;
 	init_params.depth_minimum_distance = 500;
@@ -76,11 +76,11 @@ int main(int argc, char *argv[])
 	float depth_value;
 	int numTargets = 0;
 	
-	int cannyThresh1 = 50;
-	int cannyThresh2 = 200;
+	int cannyThresh1 = 25;
+	int cannyThresh2 = 100;
 	
-	int minLineLengthP = 200;
-	int maxLineGapP = 10;
+	int minLineLengthP = 100;
+	int maxLineGapP = 3;
 	int maxLineSeperation = 20;
 	float maxAngleSeperation = 10;
 
@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
 
 
 	//Kalman Filter Nonsense
-	int stateDim = 9;
+	int stateDim = 10;
 	int measureDim = 6;
 	int controlDim = 0;
 	unsigned int typeKF = CV_32F;
@@ -131,51 +131,54 @@ int main(int argc, char *argv[])
 	
 	// Transition State Matrix A -
     // Note: set dT at each processing step!
-    // [ 1 0 0  dT 0  0  0 0 0 ]
-    // [ 0 1 0  0  dT 0  0 0 0 ]
-    // [ 0 0 1  0  0  dT 0 0 0 ]
-    // [ 0 0 0  1  0  0  0 0 0 ]
-    // [ 0 0 0  0  1  0  0 0 0 ]
-    // [ 0 0 0  0  0  1  0 0 0 ]
-    // [ 0 0 0  0  0  0  1 0 0 ]
-    // [ 0 0 0  0  0  0  0 1 0 ]
-    // [ 0 0 0  0  0  0  0 0 1 ]
+    // [ 1 0 0  0  dT 0  0  0 0 0 ]
+    // [ 0 1 0  0  0  dT 0  0 0 0 ]
+    // [ 0 0 1  0  0  0  dT 0 0 0 ]
+    // [ 0 0 0  1  0  0  0 dT 0 0 ]  
+    // [ 0 0 0  0  1  0  0  0 0 0 ]
+    // [ 0 0 0  0  0  1  0  0 0 0 ]
+    // [ 0 0 0  0  0  0  1  0 0 0 ]
+    // [ 0 0 0  0  0  0  0  1 0 0 ]
+    // [ 0 0 0  0  0  0  0  0 1 0 ]
+    // [ 0 0 0  0  0  0  0  0 0 1 ]
     cv::setIdentity(lineTrackingKF.transitionMatrix);
 	
     // Measure Matrix H - This is what you have access to
-    // [ 1 0 0 0 0 0 0 0 0 ]
-    // [ 0 1 0 0 0 0 0 0 0 ]
-    // [ 0 0 1 0 0 0 0 0 0 ]
-    // [ 0 0 0 1 0 0 0 0 0 ]
-    // [ 0 0 0 0 0 0 0 1 0 ]
-    // [ 0 0 0 0 0 0 0 0 1 ]
+    // [ 1 0 0 0 0 0 0 0 0 0 ]
+    // [ 0 1 0 0 0 0 0 0 0 0 ]
+    // [ 0 0 1 0 0 0 0 0 0 0 ]
+    // [ 0 0 0 1 0 0 0 0 0 0 ]
+    // [ 0 0 0 0 0 0 0 0 1 0 ]
+    // [ 0 0 0 0 0 0 0 0 0 1 ]
     lineTrackingKF.measurementMatrix = cv::Mat::zeros(measureDim, stateDim, typeKF);
-    lineTrackingKF.measurementMatrix.at<float>(0) = 1.0f;
-    lineTrackingKF.measurementMatrix.at<float>(10) = 1.0f;
-    lineTrackingKF.measurementMatrix.at<float>(20) = 1.0f;
-    lineTrackingKF.measurementMatrix.at<float>(30) = 1.0f;
-    lineTrackingKF.measurementMatrix.at<float>(43) = 1.0f;
-    lineTrackingKF.measurementMatrix.at<float>(53) = 1.0f;
+    lineTrackingKF.measurementMatrix.at<float>(0,0) = 1.0f;
+    lineTrackingKF.measurementMatrix.at<float>(1,1) = 1.0f;
+    lineTrackingKF.measurementMatrix.at<float>(2,2) = 1.0f;
+    lineTrackingKF.measurementMatrix.at<float>(3,3) = 1.0f;
+    lineTrackingKF.measurementMatrix.at<float>(4,8) = 1.0f;
+    lineTrackingKF.measurementMatrix.at<float>(5,9) = 1.0f;
     // Process Noise Covariance Matrix Q
-    // [ Ex   0   0     0     0      0     0     0     0 ]
-    // [ 0    Ey  0     0     0      0     0     0     0 ]
-    // [ 0    0   Ez    0     0      0     0     0     0 ]
-    // [ 0    0   0     Et    0      0     0     0     0 ]
-    // [ 0    0   0     0     Evx    0     0     0     0 ]
-    // [ 0    0   0     0     0      Evy   0     0     0 ]
-    // [ 0    0   0     0     0      0     Evz   0     0 ]
-    // [ 0    0   0     0     0      0     0     E_w   0 ]
-    // [ 0    0   0     0     0      0     0     0   E_h ]
+    // [ Ex   0   0     0     0      0     0     0     0  0 ]
+    // [ 0    Ey  0     0     0      0     0     0     0  0 ]
+    // [ 0    0   Ez    0     0      0     0     0     0  0 ]
+    // [ 0    0   0     Et    0      0     0     0     0  0 ]
+    // [ 0    0   0     0     Evx    0     0     0     0  0 ]
+    // [ 0    0   0     0     0      Evy   0     0     0  0 ]
+    // [ 0    0   0     0     0      0     Evz   0     0  0 ]
+    // [ 0    0   0     0     0      0     0     E_vt  0  0 ]
+    // [ 0    0   0     0     0      0     0     0   E_w  0 ]
+    // [ 0    0   0     0     0      0     0     0     0 E_h] 
     //cv::setIdentity(kf.processNoiseCov, cv::Scalar(1e-2));
-    lineTrackingKF.processNoiseCov.at<float>(0) = 1e-2;
-    lineTrackingKF.processNoiseCov.at<float>(10) = 1e-2;
-    lineTrackingKF.processNoiseCov.at<float>(20) = 1e-2;
-    lineTrackingKF.processNoiseCov.at<float>(30) = 1e-2;
-    lineTrackingKF.processNoiseCov.at<float>(40) = 5.0f;
-    lineTrackingKF.processNoiseCov.at<float>(50) = 5.0f;
-    lineTrackingKF.processNoiseCov.at<float>(60) = 5.0f;
-    lineTrackingKF.processNoiseCov.at<float>(70) = 1e-2;
-    lineTrackingKF.processNoiseCov.at<float>(80) = 1e-2;
+    lineTrackingKF.processNoiseCov.at<float>(0,0) = 1e-2;
+    lineTrackingKF.processNoiseCov.at<float>(1,1) = 1e-2;
+    lineTrackingKF.processNoiseCov.at<float>(2,2) = 1e-2;
+    lineTrackingKF.processNoiseCov.at<float>(3,3) = 1e-2;
+    lineTrackingKF.processNoiseCov.at<float>(4,4) = 5.0f;
+    lineTrackingKF.processNoiseCov.at<float>(5,5) = 5.0f;
+    lineTrackingKF.processNoiseCov.at<float>(6,6) = 5.0f;
+    lineTrackingKF.processNoiseCov.at<float>(7,7) = 5.0f;
+    lineTrackingKF.processNoiseCov.at<float>(8,8) = 1e-2;
+    lineTrackingKF.processNoiseCov.at<float>(9,9) = 1e-2;
     
     cv::setIdentity(lineTrackingKF.measurementNoiseCov, cv::Scalar(1e-1));
 	
@@ -208,10 +211,10 @@ int main(int argc, char *argv[])
 		if (isTracked)
 		{
 			
-			lineTrackingKF.transitionMatrix.at<float>(3) = dT;
-			lineTrackingKF.transitionMatrix.at<float>(13) = dT;
-			lineTrackingKF.transitionMatrix.at<float>(23) = dT;
-			
+			lineTrackingKF.transitionMatrix.at<float>(0,4) = dT;
+			lineTrackingKF.transitionMatrix.at<float>(1,5) = dT;
+			lineTrackingKF.transitionMatrix.at<float>(2,6) = dT;
+			lineTrackingKF.transitionMatrix.at<float>(3,7) = dT;
 			//cout<< "dT:" << endl << dT << endl;
 			
 			state = lineTrackingKF.predict();
@@ -244,7 +247,8 @@ int main(int argc, char *argv[])
 				rowsOfRect = inFrame.rows - startYOfRect;
 			
 			
-			RotatedRect sRect = RotatedRect(Point(state.at<float>(0), state.at<float>(1)), Size2f(state.at<float>(7), state.at<float>(8)), state.at<float>(3) + 90);
+			RotatedRect sRect = RotatedRect(Point(state.at<float>(0), state.at<float>(1)), Size2f(state.at<float>(8), state.at<float>(9)), state.at<float>(3) + 90);
+			cout << "Estimated Angle: " << state.at<float>(3) << endl;
 			
 			Point2f verticesSRect[4];
 			sRect.points(verticesSRect);
@@ -357,20 +361,21 @@ int main(int argc, char *argv[])
 						    measurement.at<float>(2) = depth_value;
 						    measurement.at<float>(3) = ourTrueTargets.getOrientation();
 						    measurement.at<float>(4) = ourTrueTargets.getWidth();
-						    measurement.at<float>(5) = ourTrueTargets.getLength();
+						    measurement.at<float>(5) = ourTrueTargets.getHeight();
 						    cout << "Angle:" << ourTrueTargets.getOrientation() << endl;
 						    cout << "Measurement:" << measurement << endl;
 						    if (!isTracked)
 						    {
-						      lineTrackingKF.errorCovPre.at<float>(0) = 1;
-						      lineTrackingKF.errorCovPre.at<float>(10) = 1;
-						      lineTrackingKF.errorCovPre.at<float>(20) = 1;
-						      lineTrackingKF.errorCovPre.at<float>(30) = 1;
-						      lineTrackingKF.errorCovPre.at<float>(40) = 1;
-						      lineTrackingKF.errorCovPre.at<float>(50) = 1;
-						      lineTrackingKF.errorCovPre.at<float>(60) = 1;
-						      lineTrackingKF.errorCovPre.at<float>(70) = 1;
-						      lineTrackingKF.errorCovPre.at<float>(80) = 1;
+						      lineTrackingKF.errorCovPre.at<float>(0,0) = 1;
+						      lineTrackingKF.errorCovPre.at<float>(1,1) = 1;
+						      lineTrackingKF.errorCovPre.at<float>(2,2) = 1;
+						      lineTrackingKF.errorCovPre.at<float>(3,3) = 1;
+						      lineTrackingKF.errorCovPre.at<float>(4,4) = 1;
+						      lineTrackingKF.errorCovPre.at<float>(5,5) = 1;
+						      lineTrackingKF.errorCovPre.at<float>(6,6) = 1;
+						      lineTrackingKF.errorCovPre.at<float>(7,7) = 1;
+						      lineTrackingKF.errorCovPre.at<float>(8,8) = 1;
+						      lineTrackingKF.errorCovPre.at<float>(9,9) = 1;
 						      
 						      state.at<float>(0) = measurement.at<float>(0);
 						      state.at<float>(1) = measurement.at<float>(1);
@@ -379,8 +384,9 @@ int main(int argc, char *argv[])
 						      state.at<float>(4) = 0;
 						      state.at<float>(5) = 0;
 						      state.at<float>(6) = 0;
-						      state.at<float>(7) = measurement.at<float>(4);
-						      state.at<float>(8) = measurement.at<float>(5);
+						      state.at<float>(7) = 0;
+						      state.at<float>(8) = measurement.at<float>(4);
+						      state.at<float>(9) = measurement.at<float>(5);
 						      
 						      lineTrackingKF.statePost = state;
 						      

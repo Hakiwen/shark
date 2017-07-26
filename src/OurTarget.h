@@ -12,7 +12,7 @@ class OurTarget
     int maxSeperation;
     float lineSeperation;
     int width;
-    int length;
+    int height;
     float commonAxis;
     float commonAxisR;
     float maxAngle;
@@ -37,7 +37,7 @@ class OurTarget
     OurTarget ( OurLine , OurLine , float, int, float, float);
     Point getMidPoint();
     int getWidth();
-    int getLength();
+    int getHeight();
     bool getIsValidPair();
     float getOrientation();
     RotatedRect getRectTarget();

@@ -92,9 +92,9 @@ OurTarget::OurTarget(OurLine line1, OurLine line2, float maxAngleSeperation, int
   midPoint.y = outputLines.at<float>(9);
   
   width = lineSeperation;
-  length = upperPoint - lowerPoint;
+  height = upperPoint - lowerPoint;
   
-  rectTarget = RotatedRect(midPoint, Size2f(width,length), commonAxis + 90);
+  rectTarget = RotatedRect(midPoint, Size2f(width,height), commonAxis + 90);
   
 }
 
@@ -109,9 +109,9 @@ int OurTarget::getWidth()
   return width;
 }
 
-int OurTarget::getLength()
+int OurTarget::getHeight()
 {
-  return length;
+  return height;
 }
 
 float OurTarget::getOrientation()
