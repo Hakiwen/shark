@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
 	Camera zed;
 
 	InitParameters init_params;
-	init_params.camera_resolution = RESOLUTION_VGA;
+	init_params.camera_resolution = RESOLUTION_HD720;
 	init_params.camera_fps = 15;
 	init_params.coordinate_units = UNIT_MILLIMETER;
 	init_params.depth_minimum_distance = 500;
@@ -76,11 +76,13 @@ int main(int argc, char *argv[])
 	float depth_value;
 	int numTargets = 0;
 	
-	int cannyThresh1 = 25;
-	int cannyThresh2 = 100;
+	bool foundTarget = false;
 	
-	int minLineLengthP = 100;
-	int maxLineGapP = 3;
+	int cannyThresh1 = 50;
+	int cannyThresh2 = 200;
+	
+	int minLineLengthP = 200;
+	int maxLineGapP = 10;
 	int maxLineSeperation = 20;
 	float maxAngleSeperation = 10;
 
@@ -165,22 +167,39 @@ int main(int argc, char *argv[])
     // [ 0    0   0     0     Evx    0     0     0     0  0 ]
     // [ 0    0   0     0     0      Evy   0     0     0  0 ]
     // [ 0    0   0     0     0      0     Evz   0     0  0 ]
-    // [ 0    0   0     0     0      0     0     E_vt  0  0 ]
-    // [ 0    0   0     0     0      0     0     0   E_w  0 ]
-    // [ 0    0   0     0     0      0     0     0     0 E_h] 
+    // [ 0    0   0     0     0      0     0     Evt   0  0 ]
+    // [ 0    0   0     0     0      0     0     0    Ew  0 ]
+    // [ 0    0   0     0     0      0     0     0     0  Eh] 
     //cv::setIdentity(kf.processNoiseCov, cv::Scalar(1e-2));
+    lineTrackingKF.processNoiseCov = cv::Mat::zeros(stateDim, stateDim, typeKF);
     lineTrackingKF.processNoiseCov.at<float>(0,0) = 1e-2;
     lineTrackingKF.processNoiseCov.at<float>(1,1) = 1e-2;
     lineTrackingKF.processNoiseCov.at<float>(2,2) = 1e-2;
     lineTrackingKF.processNoiseCov.at<float>(3,3) = 1e-2;
-    lineTrackingKF.processNoiseCov.at<float>(4,4) = 5.0f;
-    lineTrackingKF.processNoiseCov.at<float>(5,5) = 5.0f;
-    lineTrackingKF.processNoiseCov.at<float>(6,6) = 5.0f;
-    lineTrackingKF.processNoiseCov.at<float>(7,7) = 5.0f;
+    lineTrackingKF.processNoiseCov.at<float>(4,4) = 1e-2;
+    lineTrackingKF.processNoiseCov.at<float>(5,5) = 1e-2;
+    lineTrackingKF.processNoiseCov.at<float>(6,6) = 1e-2;
+    lineTrackingKF.processNoiseCov.at<float>(7,7) = 1e-2;
     lineTrackingKF.processNoiseCov.at<float>(8,8) = 1e-2;
     lineTrackingKF.processNoiseCov.at<float>(9,9) = 1e-2;
     
-    cv::setIdentity(lineTrackingKF.measurementNoiseCov, cv::Scalar(1e-1));
+    
+    //Measurement Noise Covairance Martix
+    //[ Wx 0  0  0  0  0  ]
+    //[ 0  Wy 0  0  0  0  ]
+    //[ 0  0  Wz 0  0  0  ]
+    //[ 0  0  0  Wt 0  0  ]
+    //[ 0  0  0  0  Ww 0  ]
+    //[ 0  0  0  0  0  Wh ]
+    lineTrackingKF.measurementNoiseCov = cv::Mat::zeros(measureDim, measureDim, typeKF);
+    lineTrackingKF.measurementNoiseCov.at<float>(0,0) = 1e-2;
+    lineTrackingKF.measurementNoiseCov.at<float>(1,1) = 1e-2;
+    lineTrackingKF.measurementNoiseCov.at<float>(2,2) = 1e-2;
+    lineTrackingKF.measurementNoiseCov.at<float>(3,3) = 1e-2;
+    lineTrackingKF.measurementNoiseCov.at<float>(4,4) = 1e-2;
+    lineTrackingKF.measurementNoiseCov.at<float>(5,5) = 1e-2;
+
+    
 	
 	for(;;)
 	{	
@@ -286,6 +305,7 @@ int main(int argc, char *argv[])
 		//size_t vL= 0;
 		if (linesP.size() > 0)
 		{
+			foundTarget = false;
 			OurLine ourLines[linesP.size()];
 			OurTarget ourTargets[linesP.size()*linesP.size()];
 			numTargets = 0;
@@ -322,33 +342,32 @@ int main(int argc, char *argv[])
 				Vec4i tempLine = ourLines[i].getCvLine();
 				for (size_t n = 0; n < i; n ++)
 				{
+				  size_t k = i*linesP.size() + n;
 				  //cout<<"Line object size: " << sizeof(OurLine) << endl;
-				  ourTargets[i*linesP.size() + n] = OurTarget(ourLines[i], ourLines[n], maxAngleSeperation, maxLineSeperation, desiredAngle, range);
+				  ourTargets[k] = OurTarget(ourLines[i], ourLines[n], maxAngleSeperation, maxLineSeperation, desiredAngle, range);
 				  //line(inFrameCopy, ourLines[i].getMidPoint(), ourLines[n].getMidPoint(), Scalar(0, 255,255), 3, 8 );
-				  if (ourTargets[i*linesP.size() + n].getIsValidPair())
+				  
+				  if (ourTargets[k].getIsValidPair() && !foundTarget)
 				  {
 				    numTargets ++;
-				    OurTarget ourTrueTargets = ourTargets[i*linesP.size() + n];
-				    Point midPoint = ourTrueTargets.getMidPoint();
-				    
-				
-			
+				    Point midPoint = ourTargets[k].getMidPoint();
 				    cout<< "Number of Targets Found: " << numTargets << endl;
-				    if(numTargets > 0 && ((lastMidPoint.x - midPoint.x)*(lastMidPoint.x - midPoint.x) + (lastMidPoint.y - midPoint.y)*(lastMidPoint.y - midPoint.y)) > 4000)
-				    {
+				    foundTarget = true;
+				    //if(numTargets > 0 && ((lastMidPoint.x - midPoint.x)*(lastMidPoint.x - midPoint.x) + (lastMidPoint.y - midPoint.y)*(lastMidPoint.y - midPoint.y)) > 4000)
+				    //{
 					    //for(size_t q = 0; q < numTargets; q++)
 					    //{
 					    //if ((comm[i] > (90 - range)) && (angleD[i] < (90 + range)) || (angleD[i] > (-90 - range)) && (angleD[i] < (-90 + range)))
 					    //{
 						    lastMidPoint = midPoint;
-						    cv::Mat adjustedLines = ourTrueTargets.getAdjustedLines();
-						    //cout<< "Pt1: " << Point(ourTrueTargets.getOutLine1()[0],ourTrueTargets.getOutLine1()[1]) << "Pt2: " << Point(ourTrueTargets.getOutLine1()[2],ourTrueTargets.getOutLine1()[3]) << endl;
+						    cv::Mat adjustedLines = ourTargets[k].getAdjustedLines();
+						    //cout<< "Pt1: " << Point(ourTargets.getOutLine1()[0],ourTargets.getOutLine1()[1]) << "Pt2: " << Point(ourTargets.getOutLine1()[2],ourTargets.getOutLine1()[3]) << endl;
 						    //line(inFrameCopy, Point(currentLineP[0], currentLineP[1]), Point(currentLineP[2], currentLineP[3]), Scalar(0,0,255), 3, 8 );
-						    //line(inFrameCopy, Point(ourTrueTargets.getOutLine1()[0],ourTrueTargets.getOutLine1()[1]), Point(ourTrueTargets.getOutLine1()[2],ourTrueTargets.getOutLine1()[3]) , Scalar(0,0,255), 3, 8);
-						    //line(inFrameCopy, Point(ourTrueTargets.getOutLine2()[0],ourTrueTargets.getOutLine2()[1]), Point(ourTrueTargets.getOutLine2()[2],ourTrueTargets.getOutLine2()[3]), Scalar(0,0,255), 3, 8);
+						    //line(inFrameCopy, Point(ourTargets.getOutLine1()[0],ourTargets.getOutLine1()[1]), Point(ourTargets.getOutLine1()[2],ourTargets.getOutLine1()[3]) , Scalar(0,0,255), 3, 8);
+						    //line(inFrameCopy, Point(ourTargets.getOutLine2()[0],ourTargets.getOutLine2()[1]), Point(ourTargets.getOutLine2()[2],ourTargets.getOutLine2()[3]), Scalar(0,0,255), 3, 8);
 						    inFrame_zd.getValue(midPoint.x, midPoint.y, & depth_value);
 						    
-						    RotatedRect rRect = ourTrueTargets.getRectTarget();
+						    RotatedRect rRect = ourTargets[k].getRectTarget();
 						    Point2f vertices[4];
 						    rRect.points(vertices);
 						    for (int i = 0; i < 4; i++)
@@ -359,10 +378,10 @@ int main(int argc, char *argv[])
 						    measurement.at<float>(0) = midPoint.x;
 						    measurement.at<float>(1) = midPoint.y;
 						    measurement.at<float>(2) = depth_value;
-						    measurement.at<float>(3) = ourTrueTargets.getOrientation();
-						    measurement.at<float>(4) = ourTrueTargets.getWidth();
-						    measurement.at<float>(5) = ourTrueTargets.getHeight();
-						    cout << "Angle:" << ourTrueTargets.getOrientation() << endl;
+						    measurement.at<float>(3) = ourTargets[k].getOrientation();
+						    measurement.at<float>(4) = ourTargets[k].getWidth();
+						    measurement.at<float>(5) = ourTargets[k].getHeight();
+						    cout << "Angle:" << ourTargets[k].getOrientation() << endl;
 						    cout << "Measurement:" << measurement << endl;
 						    if (!isTracked)
 						    {
@@ -409,11 +428,10 @@ int main(int argc, char *argv[])
 					    //}
 					      //}
 					isTracked = true;   
-				    }
-				  }
-				  
+				    //}
 				}
-			}
+			      }
+			}	  
 		}
 		else
 		{
