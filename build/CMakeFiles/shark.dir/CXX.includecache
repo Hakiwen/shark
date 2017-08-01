@@ -53,6 +53,8 @@ opencv2/highgui.hpp
 -
 opencv2/video/tracking.hpp
 -
+opencv2/gpu/gpu.hpp
+-
 
 /usr/local/cuda-8.0/include/builtin_types.h
 device_types.h
