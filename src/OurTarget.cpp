@@ -58,43 +58,53 @@ OurTarget::OurTarget(OurLine line1, OurLine line2, float maxAngleSeperation, int
   x2 = (max(transformedLines.at<float>(1) , transformedLines.at<float>(3)) - min(transformedLines.at<float>(1), transformedLines.at<float>(3)))/2 + min(transformedLines.at<float>(1), transformedLines.at<float>(3));
   
   lineSeperation = max(x1, x2) - min(x1, x2);
-  //cout<<"x1: " << x1 << " x2: " << x2 <<endl;
-  adjustedLines = cv::Mat(2, 5, CV_32F);
-  adjustedLines.at<float>(0) = x1;
-  adjustedLines.at<float>(1) = x2;
-  adjustedLines.at<float>(2) = x1;
-  adjustedLines.at<float>(3) = x2;
-  adjustedLines.at<float>(4) = lineSeperation/2 + min(x1, x2);
-  adjustedLines.at<float>(5) = lowerPoint;
-  adjustedLines.at<float>(6) = lowerPoint;
-  adjustedLines.at<float>(7) = upperPoint;
-  adjustedLines.at<float>(8) = upperPoint;
-  adjustedLines.at<float>(9) = (upperPoint - lowerPoint)/2 + lowerPoint;
+  
+  if(((abs(maxAngle - minAngle) < maxAngleSeperation) && (abs(lineSeperation) < maxSeperation)) && ((commonAxis > (desiredAngle - angleRange)) && (commonAxis < (desiredAngle + angleRange)) || (commonAxis > (-desiredAngle - angleRange)) && (commonAxis < (-desiredAngle + angleRange))))
+  { 
+    
+    isValidPair = true;
+      
+    adjustedLines = cv::Mat(2, 5, CV_32F);
+    adjustedLines.at<float>(0) = x1;
+    adjustedLines.at<float>(1) = x2;
+    adjustedLines.at<float>(2) = x1;
+    adjustedLines.at<float>(3) = x2;
+    adjustedLines.at<float>(4) = lineSeperation/2 + min(x1, x2);
+    adjustedLines.at<float>(5) = lowerPoint;
+    adjustedLines.at<float>(6) = lowerPoint;
+    adjustedLines.at<float>(7) = upperPoint;
+    adjustedLines.at<float>(8) = upperPoint;
+    adjustedLines.at<float>(9) = (upperPoint - lowerPoint)/2 + lowerPoint;
   
   
-  outputLines = cv::Mat(2, 5, CV_32F);
-  
-  if(commonAxis > 0)
-    outputLines = rotationMatrix.inv() * adjustedLines;
+    outputLines = cv::Mat(2, 5, CV_32F);
+    
+    if(commonAxis > 0)
+      outputLines = rotationMatrix.inv() * adjustedLines;
+    else
+      outputLines = rotationMatrix  * adjustedLines;
+    
+    newLine1[0] = outputLines.at<float>(0);
+    newLine1[1] = outputLines.at<float>(5);
+    newLine1[2] = outputLines.at<float>(2);
+    newLine1[3] = outputLines.at<float>(7);
+    newLine2[0] = outputLines.at<float>(1);
+    newLine2[1] = outputLines.at<float>(6);
+    newLine2[2] = outputLines.at<float>(3);
+    newLine2[3] = outputLines.at<float>(8);
+    
+    midPoint.x = outputLines.at<float>(4);
+    midPoint.y = outputLines.at<float>(9);
+    
+    width = lineSeperation;
+    height = upperPoint - lowerPoint;
+    
+    rectTarget = RotatedRect(midPoint, Size2f(width,height), commonAxis + 90);
+    
+  }
   else
-    outputLines = rotationMatrix  * adjustedLines;
+    isValidPair = false;
   
-  newLine1[0] = outputLines.at<float>(0);
-  newLine1[1] = outputLines.at<float>(5);
-  newLine1[2] = outputLines.at<float>(2);
-  newLine1[3] = outputLines.at<float>(7);
-  newLine2[0] = outputLines.at<float>(1);
-  newLine2[1] = outputLines.at<float>(6);
-  newLine2[2] = outputLines.at<float>(3);
-  newLine2[3] = outputLines.at<float>(8);
-  
-  midPoint.x = outputLines.at<float>(4);
-  midPoint.y = outputLines.at<float>(9);
-  
-  width = lineSeperation;
-  height = upperPoint - lowerPoint;
-  
-  rectTarget = RotatedRect(midPoint, Size2f(width,height), commonAxis + 90);
   
 }
 
@@ -121,20 +131,7 @@ float OurTarget::getOrientation()
 
 bool OurTarget::getIsValidPair()
 {
-  if((abs(maxAngle - minAngle) < maxAngleSeperation) && (abs(lineSeperation) < maxSeperation))
-  { 
-    //cout<< "Lines at: (" << midPoint.x << "," << midPoint.y << ") Passed seperation tests" << endl;
-    //cout<< "Desire - range: " << desiredAngle - angleRange << " Desire + range: " << desiredAngle + angleRange << endl;
-    if ((commonAxis > (desiredAngle - angleRange)) && (commonAxis < (desiredAngle + angleRange)) || (commonAxis > (-desiredAngle - angleRange)) && (commonAxis < (-desiredAngle + angleRange)))
-    {
-      //cout<< "Lines at: (" << midPoint.x << "," << midPoint.y << ") Passed angle tests" << endl;
-      return true;
-    }
-    else
-      return false;
-  }
-  else
-    return false;
+  return isValidPair;
 }
 
 RotatedRect OurTarget::getRectTarget()

@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
 	Camera zed;
 
 	InitParameters init_params;
-	init_params.camera_resolution = RESOLUTION_HD720;
+	init_params.camera_resolution = RESOLUTION_VGA;
 	init_params.camera_fps = 15;
 	init_params.coordinate_units = UNIT_MILLIMETER;
 	init_params.depth_minimum_distance = 500;
@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
 	//Line finding params
 	float rhod = 1;
 	float th = 180;
-	float thresh = 100;
+	float thresh = 80;
 	float range = 20; //in degrees
 	float desiredAngle = 90;
 	int searching = 1;
@@ -78,11 +78,11 @@ int main(int argc, char *argv[])
 	
 	bool foundTarget = false;
 	
-	int cannyThresh1 = 50;
-	int cannyThresh2 = 200;
+	int cannyThresh1 = 10;
+	int cannyThresh2 = 40;
 	
-	int minLineLengthP = 200;
-	int maxLineGapP = 10;
+	int minLineLengthP = 100;
+	int maxLineGapP = 5;
 	int maxLineSeperation = 20;
 	float maxAngleSeperation = 10;
 
@@ -101,9 +101,22 @@ int main(int argc, char *argv[])
 	double ticks = 0;
 	
 	Point lastMidPoint = Point(0,0);
+	
+	
+	//Eval Vars
+	std::chrono::steady_clock::time_point begin;
+	std::chrono::steady_clock::time_point end;
+	std::chrono::steady_clock::time_point lastStart = std::chrono::steady_clock::now();
+	std::chrono::steady_clock::time_point thisStart;
+	std::chrono::steady_clock::time_point thisCycleTime;
+	float avgCycleTime = 0;
+	float avgNotCycleTime = 0;
+	int numCyclesFound = 0;
+	int numCyclesNotFound = 0;
+	
 
 	//CV Objects
-	sl::Mat inFrame_zl, inFrame_zr, inFrame_zd;
+	sl::Mat inFrame_zl, inFrame_zr, inFrame_zd, inFrame_zq;
 	cv::Mat inFrame_l, inFrame_r, inFrame_d, inFrame, inFrameCopy,  outFrame, outFrameTemp;
 	vector<Vec2f> lines;
 	vector<Vec4i> linesP;
@@ -185,7 +198,7 @@ int main(int argc, char *argv[])
     
     
     //Measurement Noise Covairance Martix
-    //[ Wx 0  0  0  0  0  ]
+    //[ Wx 0  0  0  0  0  ]std::chrono::steady_clock::time_point end;
     //[ 0  Wy 0  0  0  0  ]
     //[ 0  0  Wz 0  0  0  ]
     //[ 0  0  0  Wt 0  0  ]
@@ -203,6 +216,23 @@ int main(int argc, char *argv[])
 	
 	for(;;)
 	{	
+		thisStart = std::chrono::steady_clock::now();
+		//thisCycleTime = (thisStart - lastStart).count();
+		cout<< "Total Cycle Time: " << std::chrono::duration_cast<std::chrono::microseconds>(thisStart - lastStart).count() << endl;
+		/*if(foundTarget)
+		{
+		  numCyclesFound ++;
+		  avgCycleTime = (avgCycleTime*(numCyclesFound - 1) + std::chrono::duration_cast<std::chrono::microseconds>(thisCycleTime))/numCyclesFound;
+		  cout<< "Average Tracking Cycle Time: " << avgCycleTime << endl;
+		}
+		else
+		{
+		  numCyclesNotFound ++;
+		  avgNotCycleTime = (avgNotCycleTime(numCyclesNotFound - 1) + std::chrono::duration_cast<std::chrono::microseconds>(thisCycleTime))/numCyclesNotFound;
+		  cout<< "Average Non Tracking Cycle Time: " << avgNotCycleTime << endl;
+		}*/
+		lastStart = thisStart;
+		begin = std::chrono::steady_clock::now();
 		cv::Mat inFrameTemp;
 		double precTick = ticks;
 		ticks = (double) cv::getTickCount();
@@ -212,14 +242,15 @@ int main(int argc, char *argv[])
 
 		err = zed.retrieveImage(inFrame_zl, VIEW_LEFT);
 		inFrame_l = cv::Mat(inFrame_zl.getHeight(), inFrame_zl.getWidth(), CV_8UC4, inFrame_zl.getPtr<sl::uchar1>(sl::MEM_CPU));
-
-		err = zed.retrieveImage(inFrame_zr, VIEW_RIGHT);
-		inFrame_r = cv::Mat(inFrame_zr.getHeight(), inFrame_zr.getWidth(), CV_8UC4, inFrame_zr.getPtr<sl::uchar1>(sl::MEM_CPU));
 		
 		err = zed.retrieveMeasure(inFrame_zd);
 		inFrame = inFrame_l;
-		inFrame.copyTo(inFrameCopy);
 		
+		err = zed.retrieveImage(inFrame_zq, VIEW_DEPTH);
+		inFrame_d = cv::Mat(inFrame_zq.getHeight(), inFrame_zq.getWidth(), CV_8UC4, inFrame_zq.getPtr<sl::uchar1>(sl::MEM_CPU));
+		inFrame_d.copyTo(inFrameCopy);
+		end = std::chrono::steady_clock::now();
+		cout<< "Time to Grab Images: " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << endl;
 		
 		if(inFrame.empty())
 		{
@@ -237,7 +268,7 @@ int main(int argc, char *argv[])
 			//cout<< "dT:" << endl << dT << endl;
 			
 			state = lineTrackingKF.predict();
-			cout << "State post:" << endl << state << endl;
+			//cout << "State post:" << endl << state << endl;
 			
 			widthOfRect = state.at<float>(7);
 			heightOfRect = state.at<float>(8);
@@ -267,14 +298,16 @@ int main(int argc, char *argv[])
 			
 			
 			RotatedRect sRect = RotatedRect(Point(state.at<float>(0), state.at<float>(1)), Size2f(state.at<float>(8), state.at<float>(9)), state.at<float>(3) + 90);
-			cout << "Estimated Angle: " << state.at<float>(3) << endl;
+			//cout << "Estimated Angle: " << state.at<float>(3) << endl;
 			
 			Point2f verticesSRect[4];
 			sRect.points(verticesSRect);
 			for (int i = 0; i < 4; i++)
-			  line(inFrameCopy, verticesSRect[i], verticesSRect[(i+1)%4], Scalar(255,255,255));
+			line(inFrameCopy, verticesSRect[i], verticesSRect[(i+1)%4], Scalar(255,255,255));
 			//rectangle(inFrameCopy, Point(startXOfRect, startYOfRect), Point(startXOfRect + colsOfRect, startYOfRect + rowsOfRect), Scalar(255, 255, 255));
-			putText(inFrameCopy, to_string(state.at<float>(2)), Point(300, 300), FONT_HERSHEY_SIMPLEX, 1, Scalar(0, 0 , 255));
+			
+			putText(inFrameCopy, to_string(state.at<float>(2)), Point(300, 300), FONT_HERSHEY_SIMPLEX, 1, Scalar(255, 255 , 255));
+			circle(inFrameCopy, Point(state.at<float>(0), state.at<float>(1)), 5, Scalar(255,255,255),3);
 			//inFrame(cv::Rect(startXOfRect, startYOfRect, colsOfRect, rowsOfRect)).copyTo(inFrameTemp);
 			
 			
@@ -293,6 +326,7 @@ int main(int argc, char *argv[])
 		
 
 		//Finds edges in the input frame
+		begin = std::chrono::steady_clock::now();
 		Canny(inFrame, outFrameTemp, cannyThresh1, cannyThresh2, 3);
 		//converts image color system to a meaningful output form
 		cvtColor(outFrameTemp, outFrame, COLOR_GRAY2BGR);
@@ -301,10 +335,13 @@ int main(int argc, char *argv[])
 		//cout<<"startXOfRect: " << startXOfRect << " startYOfRect: " << startYOfRect << " cols: " << colsOfRect << " rows: " << rowsOfRect << endl;
 		//cout<< inFrameTemp;
 		HoughLinesP( outFrameTemp, linesP, rhod, CV_PI/th, thresh, minLineLengthP, maxLineGapP);
-		    
+		
+		end = std::chrono::steady_clock::now();
+		cout<< "Time to Run Transform: " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << endl;
 		//size_t vL= 0;
 		if (linesP.size() > 0)
 		{
+			begin = std::chrono::steady_clock::now();
 			foundTarget = false;
 			OurLine ourLines[linesP.size()];
 			OurTarget ourTargets[linesP.size()*linesP.size()];
@@ -344,7 +381,9 @@ int main(int argc, char *argv[])
 				{
 				  size_t k = i*linesP.size() + n;
 				  //cout<<"Line object size: " << sizeof(OurLine) << endl;
+				  begin = std::chrono::steady_clock::now();
 				  ourTargets[k] = OurTarget(ourLines[i], ourLines[n], maxAngleSeperation, maxLineSeperation, desiredAngle, range);
+				  
 				  //line(inFrameCopy, ourLines[i].getMidPoint(), ourLines[n].getMidPoint(), Scalar(0, 255,255), 3, 8 );
 				  
 				  if (ourTargets[k].getIsValidPair() && !foundTarget)
@@ -381,8 +420,10 @@ int main(int argc, char *argv[])
 						    measurement.at<float>(3) = ourTargets[k].getOrientation();
 						    measurement.at<float>(4) = ourTargets[k].getWidth();
 						    measurement.at<float>(5) = ourTargets[k].getHeight();
-						    cout << "Angle:" << ourTargets[k].getOrientation() << endl;
-						    cout << "Measurement:" << measurement << endl;
+						    putText(inFrameCopy, to_string(measurement.at<float>(2)), Point(300, 250), FONT_HERSHEY_SIMPLEX, 1, Scalar(0, 255, 0));
+						    circle(inFrameCopy, Point(measurement.at<float>(0), measurement.at<float>(1)), 5, Scalar(0,255,0),3);
+						    //cout << "Angle:" << ourTargets[k].getOrientation() << endl;
+						    //cout << "Measurement:" << measurement << endl;
 						    if (!isTracked)
 						    {
 						      lineTrackingKF.errorCovPre.at<float>(0,0) = 1;
@@ -413,17 +454,18 @@ int main(int argc, char *argv[])
 			
 						      
 						      
-						      cout<<"Initializing filter" << endl;
-						      
+						      //cout<<"Initializing filter" << endl;
+						      end = std::chrono::steady_clock::now();
+						      cout<< "Time to instantiate tracking: " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << endl;
 						    }
 						    else
 						    {
 						      
-						      
 						      lineTrackingKF.correct(measurement);
+						      end = std::chrono::steady_clock::now();
+						      cout<< "Time to correct KF: " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << endl;
 						      
-						      
-						      cout<<"Correcting Estimate" << endl;
+						      //cout<<"Correcting Estimate" << endl;
 						    }
 					    //}
 					      //}
@@ -439,7 +481,10 @@ int main(int argc, char *argv[])
 			if(framesSinceSeen >= 100)
 			  isTracked = false;
 		}
+	begin = std::chrono::steady_clock::now();
 	imshow("InputFrameCopy", inFrameCopy);
+	end = std::chrono::steady_clock::now();
+	cout<< "Time to output image: " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << endl;
 	//imshow("OutputFrame", outFrame);
 
 	if (waitKey(5) >= 0)
