@@ -48,7 +48,14 @@ int main(int argc, char *argv[])
 	{
 		cv::gpu::DeviceInfo currentDevice = cv::gpu::DeviceInfo(g);
 		cout << "Device id: " << g << " name: " << currentDevice.name() << " version: " << currentDevice.majorVersion() << " cores: " << currentDevice.multiProcessorCount() << " mem: " << currentDevice.totalMemory() << "compatible: " << currentDevice.isCompatible() << endl;
+		cout << "Can map shared: " << cv::gpu::CudaMem::canMapHostMemory() << endl; 
 	}
+	cv::gpu::setDevice(0);
+	//ALLOC_ZEROCOPY = 2
+	
+	
+	
+	
 	//ZED initialize and Params
 	Camera zed;
 
@@ -125,7 +132,7 @@ int main(int argc, char *argv[])
 
 	//CV Objects
 	sl::Mat inFrame_zl, inFrame_zr, inFrame_zd, inFrame_zq, inFrame_zc;
-	cv::Mat inFrame_l, inFrame_r, inFrame_d, inFrame, inFrameCopy,  outFrame, outFrameTemp;
+	cv::Mat inFrame_l, inFrame_r, inFrame_d, inFrame, inFrameCopy,  outFrame, outFrameTemp, linesPMat;
 	vector<Vec2f> lines;
 	vector<Vec4i> linesP;
 	vector<Vec4i> validLinesP;
@@ -225,7 +232,7 @@ int main(int argc, char *argv[])
 	{	
 		thisStart = std::chrono::steady_clock::now();
 		//thisCycleTime = (thisStart - lastStart).count();
-		//cout<< "Total Cycle Time: " << std::chrono::duration_cast<std::chrono::microseconds>(thisStart - lastStart).count() << endl;
+		cout<< "Total Cycle Time: " << std::chrono::duration_cast<std::chrono::microseconds>(thisStart - lastStart).count() << endl;
 		
 		lastStart = thisStart;
 		begin = std::chrono::steady_clock::now();
@@ -316,32 +323,57 @@ int main(int argc, char *argv[])
 			inFrame.copyTo(inFrameTemp);
 		}
 		
-		
-
-		//Finds edges in the input frame
 		begin = std::chrono::steady_clock::now();
-		Canny(inFrame, outFrameTemp, cannyThresh1, cannyThresh2, 3);
+		cv::cvtColor(inFrame, inFrame, CV_RGB2GRAY);
+		cv::gpu::CudaMem zero_copy_inFrame(inFrame, cv::gpu::CudaMem::ALLOC_ZEROCOPY);
+		cv::gpu::GpuMat g_inFrame = zero_copy_inFrame.createGpuMatHeader();
+		cv::gpu::GpuMat g_outFrameTemp, g_linesP;
+		cv::gpu::HoughLinesBuf hlBuf;
+		//Finds edges in the input frame
+		
+		cv::gpu::Canny(g_inFrame, g_outFrameTemp, cannyThresh1, cannyThresh2, 3);
+		
+		end = std::chrono::steady_clock::now();
+		//cout<< "Time to Run Transform: " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << endl;
+
 		//converts image color system to a meaningful output form
-		cvtColor(outFrameTemp, outFrame, COLOR_GRAY2BGR);
+		
 	
 		//If the line to track has not yet been selected/not tracking    
 		//cout<<"startXOfRect: " << startXOfRect << " startYOfRect: " << startYOfRect << " cols: " << colsOfRect << " rows: " << rowsOfRect << endl;
 		//cout<< inFrameTemp;
-		HoughLinesP( outFrameTemp, linesP, rhod, CV_PI/th, thresh, minLineLengthP, maxLineGapP);
-		
+		begin = std::chrono::steady_clock::now();
+		cv::gpu::HoughLinesP( g_outFrameTemp, g_linesP, hlBuf, rhod, CV_PI/th, minLineLengthP, maxLineGapP, 20);
+		g_linesP.download(linesPMat);
 		end = std::chrono::steady_clock::now();
 		//cout<< "Time to Run Transform: " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << endl;
+		//cout << linesPMat.channels() <<" Channels, " << linesPMat.size() << " Size, " << linesPMat.step1() << " Step, " << linesPMat.type() << " Type, " << linesPMat.isContinuous() << " Continuous" << endl;
+		//cout << linesPMat << endl;
 		//size_t vL= 0;
-		if (linesP.size() > 0)
-		{
+ 		if (linesPMat.total() > 0)
+ 		{
+			Vec4i linesP[linesPMat.total()];
 			begin = std::chrono::steady_clock::now();
 			foundTarget = false;
-			OurLine ourLines[linesP.size()];
-			OurTarget ourTargets[linesP.size()*linesP.size()];
+			OurLine ourLines[linesPMat.total()];
+			OurTarget ourTargets[linesPMat.total()*linesPMat.total()];
 			numTargets = 0;
 			lastMidPoint = Point(0,0);
-			for( size_t i = 0; i < linesP.size(); i++ )
+			for( int i = 0; i < linesPMat.total(); i++ )
 			{
+				linesP[i] = linesPMat.at<Vec4i>(i);
+			}
+			for(size_t i = 0; i < linesPMat.total(); i++ )
+			{
+// 				float rho = linesP[i][0], theta = linesP[i][1];
+// 				Point pt1, pt2;
+// 				double a = cos(theta), b = sin(theta);
+// 				double x0 = a*rho, y0 = b*rho;
+// 				pt1.x = cvRound(x0 + 1000*(-b));
+// 				pt1.y = cvRound(y0 + 1000*(a));
+// 				pt2.x = cvRound(x0 - 1000*(-b));
+// 				pt2.y = cvRound(y0 - 1000*(a));
+// 				line( inFrameCopy, pt1, pt2, Scalar(0,0,255), 3, CV_AA);
 				/*Vec4i currentLineP;
 				//if (isTracked)
 				//{
@@ -368,11 +400,12 @@ int main(int argc, char *argv[])
 				
 				ourLines[i] = OurLine(linesP[i]);
 				line(inFrameCopy, Point(linesP[i][0], linesP[i][1]), Point( linesP[i][2], linesP[i][3]), Scalar(0,255,255), 3 , 8);
+				cout<< "line: " << linesP[i][0] << "," << linesP[i][1] << ";"<< linesP[i][2] << "," << linesP[i][3] << endl;; 
 				//cout<<"left Pt1: " << Point(linesP[i][0], linesP[i][1]) << " left Pt2: "<< Point( linesP[i][2], linesP[i][3]) << endl;
 				Vec4i tempLine = ourLines[i].getCvLine();
 				for (size_t n = 0; n < i; n ++)
 				{
-				size_t k = i*linesP.size() + n;
+				size_t k = i*linesPMat.total() + n;
 				//cout<<"Line object size: " << sizeof(OurLine) << endl;
 				begin = std::chrono::steady_clock::now();
 				ourTargets[k] = OurTarget(ourLines[i], ourLines[n], maxAngleSeperation, maxLineSeperation, desiredAngle, range);
@@ -465,7 +498,7 @@ int main(int argc, char *argv[])
 					isTracked = true;   
 				//}
 				}
-			}
+				}
 			}	  
 		}
 		else
