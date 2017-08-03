@@ -30,12 +30,12 @@ class OurTarget
 		cv::Mat adjustedLines;
 		cv::Mat originalLines;
 		cv::Mat transformedLines;
-		cv::Mat rotationMatrix;
 		cv::Mat outputLines;
 	public:
 		OurTarget ();
 		OurTarget ( OurLine , OurLine , float, int, float, float);
 		Point getMidPoint();
+		Point getRotatedMidPoint();
 		int getWidth();
 		int getHeight();
 		bool getIsValidPair();
@@ -45,3 +45,5 @@ class OurTarget
 		Vec4i getOutLine1();
 		Vec4i getOutLine2();
 };
+
+cv::Mat rotate(cv::Mat, float, bool);

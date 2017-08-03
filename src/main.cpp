@@ -63,8 +63,8 @@ int main(int argc, char *argv[])
 	init_params.camera_resolution = RESOLUTION_VGA;
 	init_params.camera_fps = 15;
 	init_params.coordinate_units = UNIT_MILLIMETER;
-	init_params.depth_minimum_distance = 500;
-	init_params.depth_mode = DEPTH_MODE_PERFORMANCE;
+	init_params.depth_minimum_distance = 300;
+	init_params.depth_mode = DEPTH_MODE_QUALITY;
 	ERROR_CODE err;
 	
 	err = zed.open(init_params);
@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
 	int cannyThresh2 = 40;
 	
 	int minLineLengthP = 100;
-	int maxLineGapP = 5;
+	int maxLineGapP = 10;
 	int maxLineSeperation = 30;
 	float maxAngleSeperation = 10;
 
@@ -131,12 +131,16 @@ int main(int argc, char *argv[])
 	
 
 	//CV Objects
-	sl::Mat inFrame_zl, inFrame_zr, inFrame_zd, inFrame_zq, inFrame_zc;
-	cv::Mat inFrame_l, inFrame_r, inFrame_d, inFrame, inFrameCopy,  outFrame, outFrameTemp, linesPMat;
+	sl::Mat inFrame_zl, inFrame_zr, inFrame_zd, inFrame_zq, inFrame_zdm, inFrame_zcm,  inFrame_zc;
+	cv::Mat inFrame_l, inFrame_r, inFrame_d, inFrame_c, inFrame, inFrameCopy,  outFrame, outFrameTemp, linesPMat, canny_d, canny_l, canny_c;
 	vector<Vec2f> lines;
 	vector<Vec4i> linesP;
 	vector<Vec4i> validLinesP;
-	namedWindow("InputFrame", WINDOW_AUTOSIZE);
+	Point estMidPoint;
+// 	namedWindow("InputFrame", WINDOW_AUTOSIZE);
+// 	namedWindow("Left", WINDOW_AUTOSIZE);
+	namedWindow("Depth", WINDOW_AUTOSIZE);
+// 	namedWindow("Confidence", WINDOW_AUTOSIZE);
 	//setMouseCallback("InputFrame", mouse_callback);
 	//namedWindow("OutputFrame", WINDOW_AUTOSIZE);
 
@@ -226,14 +230,15 @@ int main(int argc, char *argv[])
 	lineTrackingKF.measurementNoiseCov.at<float>(2,2) = 19.1769;
 	lineTrackingKF.measurementNoiseCov.at<float>(3,3) = 1e-2;
 	lineTrackingKF.measurementNoiseCov.at<float>(4,4) = 1e-2;
-	lineTrackingKF.measurementNoiseCov.at<float>(5,5) = 1e-2;
-	
-	for(;;)
+	lineTrackingKF.measurementNoiseCov.at<float>(5,5) = 950.11;
+	int numSamples = 300;
+	float sampledHeight[numSamples];
+	int p = 0;
+	while(p < numSamples)
 	{	
 		thisStart = std::chrono::steady_clock::now();
 		//thisCycleTime = (thisStart - lastStart).count();
-		cout<< "Total Cycle Time: " << std::chrono::duration_cast<std::chrono::microseconds>(thisStart - lastStart).count() << endl;
-		
+		//cout<< "Total Cycle Time: " << std::chrono::duration_cast<std::chrono::microseconds>(thisStart - lastStart).count() << endl;
 		lastStart = thisStart;
 		begin = std::chrono::steady_clock::now();
 		cv::Mat inFrameTemp;
@@ -243,21 +248,27 @@ int main(int argc, char *argv[])
 		//Grabs and converts all the images from ZED
 		err == zed.grab(runtime_parameters);
 
-		err = zed.retrieveImage(inFrame_zl, VIEW_LEFT);
-		inFrame_l = cv::Mat(inFrame_zl.getHeight(), inFrame_zl.getWidth(), CV_8UC4, inFrame_zl.getPtr<sl::uchar1>(sl::MEM_CPU));
+// 		err = zed.retrieveImage(inFrame_zl, VIEW_LEFT);
+// 		inFrame_l = cv::Mat(inFrame_zl.getHeight(), inFrame_zl.getWidth(), CV_8UC4, inFrame_zl.getPtr<sl::uchar1>(sl::MEM_CPU));
 		
-		err = zed.retrieveMeasure(inFrame_zd);
-		inFrame = inFrame_l;
+		err = zed.retrieveMeasure(inFrame_zdm);
+// 		inFrame = inFrame_l;
 		
-		err = zed.retrieveMeasure(inFrame_zc, MEASURE_CONFIDENCE);
+// 		err = zed.retrieveMeasure(inFrame_zcm, MEASURE_CONFIDENCE);
+		
+		err = zed.retrieveImage(inFrame_zd, VIEW_DEPTH);
+		inFrame_d = cv::Mat(inFrame_zd.getHeight(), inFrame_zd.getWidth(), CV_8UC4, inFrame_zd.getPtr<sl::uchar1>(sl::MEM_CPU));
+		
+// 		err = zed.retrieveImage(inFrame_zc , VIEW_CONFIDENCE);
+// 		inFrame_c = cv::Mat(inFrame_zc.getHeight(), inFrame_zc.getWidth(), CV_8UC4, inFrame_zc.getPtr<sl::uchar1>(sl::MEM_CPU));
 		
 		
-		err = zed.retrieveImage(inFrame_zq, VIEW_DEPTH);
-		inFrame_d = cv::Mat(inFrame_zq.getHeight(), inFrame_zq.getWidth(), CV_8UC4, inFrame_zq.getPtr<sl::uchar1>(sl::MEM_CPU));
-		inFrame.copyTo(inFrameCopy);
+		inFrame_d.copyTo(inFrameCopy);
+		
+		
 		end = std::chrono::steady_clock::now();
 		//cout<< "Time to Grab Images: " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << endl;
-		if(inFrame.empty())
+		if(inFrame_d.empty())
 		{
 			cout << "Blank frame \n";
 			return -1;
@@ -300,19 +311,24 @@ int main(int argc, char *argv[])
 				rowsOfRect = heightOfRect*2;
 			else
 				rowsOfRect = inFrame.rows - startYOfRect;
-			
-			
-			RotatedRect sRect = RotatedRect(Point(state.at<float>(0), state.at<float>(1)), Size2f(state.at<float>(8), state.at<float>(9)), state.at<float>(3) + 90);
+			cv::Mat estMidPointMat(2, 1, CV_32F);
+			estMidPointMat.at<float>(0) = state.at<float>(0);
+			estMidPointMat.at<float>(1) = state.at<float>(1);			
+			estMidPointMat = rotate(estMidPointMat, state.at<float>(3)*CV_PI/180, false);
+			estMidPoint.x = estMidPointMat.at<float>(0);
+			estMidPoint.y = estMidPointMat.at<float>(1);
+			cout << "Est Mid Point " << estMidPoint << endl;
+			RotatedRect sRect = RotatedRect(Point(estMidPointMat.at<float>(0), estMidPointMat.at<float>(1)), Size2f(state.at<float>(8), state.at<float>(9)), state.at<float>(3) + 90);
 			//cout << "Estimated Angle: " << state.at<float>(3) << endl;
 			
 			Point2f verticesSRect[4];
 			sRect.points(verticesSRect);
 			for (int i = 0; i < 4; i++)
-			line(inFrameCopy, verticesSRect[i], verticesSRect[(i+1)%4], Scalar(255,255,255));
+				line(inFrameCopy, verticesSRect[i], verticesSRect[(i+1)%4], Scalar(255,255,255));
 			//rectangle(inFrameCopy, Point(startXOfRect, startYOfRect), Point(startXOfRect + colsOfRect, startYOfRect + rowsOfRect), Scalar(255, 255, 255));
 			
 			putText(inFrameCopy, to_string(state.at<float>(2)), Point(300, 300), FONT_HERSHEY_SIMPLEX, 1, Scalar(255, 255 , 255));
-			circle(inFrameCopy, Point(state.at<float>(0), state.at<float>(1)), 5, Scalar(255,255,255),3);
+			circle(inFrameCopy, estMidPoint, 5, Scalar(255,255,255),3);
 			//inFrame(cv::Rect(startXOfRect, startYOfRect, colsOfRect, rowsOfRect)).copyTo(inFrameTemp);
 			
 			
@@ -324,14 +340,34 @@ int main(int argc, char *argv[])
 		}
 		
 		begin = std::chrono::steady_clock::now();
-		cv::cvtColor(inFrame, inFrame, CV_RGB2GRAY);
-		cv::gpu::CudaMem zero_copy_inFrame(inFrame, cv::gpu::CudaMem::ALLOC_ZEROCOPY);
-		cv::gpu::GpuMat g_inFrame = zero_copy_inFrame.createGpuMatHeader();
-		cv::gpu::GpuMat g_outFrameTemp, g_linesP;
-		cv::gpu::HoughLinesBuf hlBuf;
-		//Finds edges in the input frame
+// 		cv::cvtColor(inFrame, inFrame, CV_RGB2GRAY);
+		cv::cvtColor(inFrame_d, inFrame_d, CV_RGB2GRAY);
+// 		cv::cvtColor(inFrame_c, inFrame_c, CV_RGB2GRAY);
 		
-		cv::gpu::Canny(g_inFrame, g_outFrameTemp, cannyThresh1, cannyThresh2, 3);
+		cv::gpu::GpuMat g_outFrameTemp, g_linesP;
+		cv::gpu::GpuMat g_outFrameTemp_c, g_outFrameTemp_d;
+		cv::gpu::HoughLinesBuf hlBuf;
+		
+// 		cv::gpu::CudaMem zero_copy_inFrame(inFrame, cv::gpu::CudaMem::ALLOC_ZEROCOPY);
+// 		cv::gpu::GpuMat g_inFrame = zero_copy_inFrame.createGpuMatHeader();
+// 		
+// 		cv::gpu::Canny(g_inFrame, g_outFrameTemp, cannyThresh1, cannyThresh2, 3);
+// 		g_outFrameTemp.download(inFrame);
+// 		
+// 		
+		cv::gpu::CudaMem zero_copy_inFrame_d(inFrame_d, cv::gpu::CudaMem::ALLOC_ZEROCOPY);
+		cv::gpu::GpuMat g_inFrame_d = zero_copy_inFrame_d.createGpuMatHeader();
+		
+		cv::gpu::Canny(g_inFrame_d, g_outFrameTemp_d, cannyThresh1, cannyThresh2, 3);
+		
+		
+// 		cv::gpu::CudaMem zero_copy_inFrame_c(inFrame_c, cv::gpu::CudaMem::ALLOC_ZEROCOPY);
+// 		cv::gpu::GpuMat g_inFrame_c = zero_copy_inFrame_c.createGpuMatHeader();
+// 		
+// 		cv::gpu::Canny(g_inFrame_c, g_outFrameTemp_c, cannyThresh1, cannyThresh2, 3);
+// 		g_outFrameTemp_c.download(inFrame_c);
+
+		
 		
 		end = std::chrono::steady_clock::now();
 		//cout<< "Time to Run Transform: " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << endl;
@@ -343,9 +379,10 @@ int main(int argc, char *argv[])
 		//cout<<"startXOfRect: " << startXOfRect << " startYOfRect: " << startYOfRect << " cols: " << colsOfRect << " rows: " << rowsOfRect << endl;
 		//cout<< inFrameTemp;
 		begin = std::chrono::steady_clock::now();
-		cv::gpu::HoughLinesP( g_outFrameTemp, g_linesP, hlBuf, rhod, CV_PI/th, minLineLengthP, maxLineGapP, 20);
+		cv::gpu::HoughLinesP( g_outFrameTemp_d, g_linesP, hlBuf, rhod, CV_PI/th, minLineLengthP, maxLineGapP, 20);
 		g_linesP.download(linesPMat);
 		end = std::chrono::steady_clock::now();
+
 		//cout<< "Time to Run Transform: " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << endl;
 		//cout << linesPMat.channels() <<" Channels, " << linesPMat.size() << " Size, " << linesPMat.step1() << " Step, " << linesPMat.type() << " Type, " << linesPMat.isContinuous() << " Continuous" << endl;
 		//cout << linesPMat << endl;
@@ -399,105 +436,109 @@ int main(int argc, char *argv[])
 				}*/
 				
 				ourLines[i] = OurLine(linesP[i]);
-				line(inFrameCopy, Point(linesP[i][0], linesP[i][1]), Point( linesP[i][2], linesP[i][3]), Scalar(0,255,255), 3 , 8);
-				cout<< "line: " << linesP[i][0] << "," << linesP[i][1] << ";"<< linesP[i][2] << "," << linesP[i][3] << endl;; 
+				//line(inFrameCopy, Point(linesP[i][0], linesP[i][1]), Point( linesP[i][2], linesP[i][3]), Scalar(0,255,255), 3 , 8);
+				//cout<< "line: " << linesP[i][0] << "," << linesP[i][1] << ";"<< linesP[i][2] << "," << linesP[i][3] << endl;; 
 				//cout<<"left Pt1: " << Point(linesP[i][0], linesP[i][1]) << " left Pt2: "<< Point( linesP[i][2], linesP[i][3]) << endl;
 				Vec4i tempLine = ourLines[i].getCvLine();
 				for (size_t n = 0; n < i; n ++)
 				{
-				size_t k = i*linesPMat.total() + n;
-				//cout<<"Line object size: " << sizeof(OurLine) << endl;
-				begin = std::chrono::steady_clock::now();
-				ourTargets[k] = OurTarget(ourLines[i], ourLines[n], maxAngleSeperation, maxLineSeperation, desiredAngle, range);
-				
-				//line(inFrameCopy, ourLines[i].getMidPoint(), ourLines[n].getMidPoint(), Scalar(0, 255,255), 3, 8 );
-				
-				if (ourTargets[k].getIsValidPair() && !foundTarget)
-				{
-				numTargets ++;
-				Point midPoint = ourTargets[k].getMidPoint();
-				//cout<< "Number of Targets Found: " << numTargets << endl;
-				foundTarget = true;
-				//if(numTargets > 0 && ((lastMidPoint.x - midPoint.x)*(lastMidPoint.x - midPoint.x) + (lastMidPoint.y - midPoint.y)*(lastMidPoint.y - midPoint.y)) > 4000)
-				//{
-					//for(size_t q = 0; q < numTargets; q++)
+					size_t k = i*linesPMat.total() + n;
+					//cout<<"Line object size: " << sizeof(OurLine) << endl;
+					begin = std::chrono::steady_clock::now();
+					ourTargets[k] = OurTarget(ourLines[i], ourLines[n], maxAngleSeperation, maxLineSeperation, desiredAngle, range);
+					
+					//line(inFrameCopy, ourLines[i].getMidPoint(), ourLines[n].getMidPoint(), Scalar(0, 255,255), 3, 8 );
+					
+					if (ourTargets[k].getIsValidPair() && !foundTarget)
+					{
+					numTargets ++;
+					Point midPoint = ourTargets[k].getMidPoint();
+					cout << "Mid Point " << midPoint << endl;
+					Point rotatedMidPoint = ourTargets[k].getRotatedMidPoint();
+					//cout<< "Number of Targets Found: " << numTargets << endl;
+					foundTarget = true;
+					//if(numTargets > 0 && ((lastMidPoint.x - midPoint.x)*(lastMidPoint.x - midPoint.x) + (lastMidPoint.y - midPoint.y)*(lastMidPoint.y - midPoint.y)) > 4000)
 					//{
-					//if ((comm[i] > (90 - range)) && (angleD[i] < (90 + range)) || (angleD[i] > (-90 - range)) && (angleD[i] < (-90 + range)))
-					//{
-						lastMidPoint = midPoint;
-						cv::Mat adjustedLines = ourTargets[k].getAdjustedLines();
-						//cout<< "Pt1: " << Point(ourTargets.getOutLine1()[0],ourTargets.getOutLine1()[1]) << "Pt2: " << Point(ourTargets.getOutLine1()[2],ourTargets.getOutLine1()[3]) << endl;
-						//line(inFrameCopy, Point(currentLineP[0], currentLineP[1]), Point(currentLineP[2], currentLineP[3]), Scalar(0,0,255), 3, 8 );
-						//line(inFrameCopy, Point(ourTargets.getOutLine1()[0],ourTargets.getOutLine1()[1]), Point(ourTargets.getOutLine1()[2],ourTargets.getOutLine1()[3]) , Scalar(0,0,255), 3, 8);
-						//line(inFrameCopy, Point(ourTargets.getOutLine2()[0],ourTargets.getOutLine2()[1]), Point(ourTargets.getOutLine2()[2],ourTargets.getOutLine2()[3]), Scalar(0,0,255), 3, 8);
-						inFrame_zd.getValue(midPoint.x, midPoint.y, & depth_value);
-						
-						RotatedRect rRect = ourTargets[k].getRectTarget();
-						Point2f vertices[4];
-						rRect.points(vertices);
-						for (int i = 0; i < 4; i++)
-							line(inFrameCopy, vertices[i], vertices[(i+1)%4], Scalar(0,255,0));
-						
-						
-						framesSinceSeen = 0;
-						measurement.at<float>(0) = midPoint.x;
-						measurement.at<float>(1) = midPoint.y;
-						measurement.at<float>(2) = depth_value;
-						measurement.at<float>(3) = ourTargets[k].getOrientation();
-						measurement.at<float>(4) = ourTargets[k].getWidth();
-						measurement.at<float>(5) = ourTargets[k].getHeight();
-						putText(inFrameCopy, to_string(measurement.at<float>(2)), Point(300, 250), FONT_HERSHEY_SIMPLEX, 1, Scalar(0, 255, 0));
-						circle(inFrameCopy, Point(measurement.at<float>(0), measurement.at<float>(1)), 5, Scalar(0,255,0),3);
-						//cout << "Angle:" << ourTargets[k].getOrientation() << endl;
-						//cout << "Measurement:" << measurement << endl;
-						if (!isTracked)
-						{	
-							lineTrackingKF.errorCovPre.at<float>(0,0) = 1;
-							lineTrackingKF.errorCovPre.at<float>(1,1) = 1;
-							lineTrackingKF.errorCovPre.at<float>(2,2) = 1;
-							lineTrackingKF.errorCovPre.at<float>(3,3) = 1;
-							lineTrackingKF.errorCovPre.at<float>(4,4) = 1;
-							lineTrackingKF.errorCovPre.at<float>(5,5) = 1;
-							lineTrackingKF.errorCovPre.at<float>(6,6) = 1;
-							lineTrackingKF.errorCovPre.at<float>(7,7) = 1;
-							lineTrackingKF.errorCovPre.at<float>(8,8) = 1;
-							lineTrackingKF.errorCovPre.at<float>(9,9) = 1;
-							
-							state.at<float>(0) = measurement.at<float>(0);
-							state.at<float>(1) = measurement.at<float>(1);
-							state.at<float>(2) = measurement.at<float>(2);
-							state.at<float>(3) = measurement.at<float>(3);
-							state.at<float>(4) = 0;
-							state.at<float>(5) = 0;
-							state.at<float>(6) = 0;
-							state.at<float>(7) = 0;
-							state.at<float>(8) = measurement.at<float>(4);
-							state.at<float>(9) = measurement.at<float>(5);
-							
-							lineTrackingKF.statePost = state;
+						//for(size_t q = 0; q < numTargets; q++)
+						//{
+						//if ((comm[i] > (90 - range)) && (angleD[i] < (90 + range)) || (angleD[i] > (-90 - range)) && (angleD[i] < (-90 + range)))
+						//{
+							lastMidPoint = midPoint;
+							cv::Mat adjustedLines = ourTargets[k].getAdjustedLines();
+							//cout<< "Pt1: " << Point(ourTargets.getOutLine1()[0],ourTargets.getOutLine1()[1]) << "Pt2: " << Point(ourTargets.getOutLine1()[2],ourTargets.getOutLine1()[3]) << endl;
+							//line(inFrameCopy, Point(currentLineP[0], currentLineP[1]), Point(currentLineP[2], currentLineP[3]), Scalar(0,0,255), 3, 8 );
+							//line(inFrameCopy, Point(ourTargets.getOutLine1()[0],ourTargets.getOutLine1()[1]), Point(ourTargets.getOutLine1()[2],ourTargets.getOutLine1()[3]) , Scalar(0,0,255), 3, 8);
+							//line(inFrameCopy, Point(ourTargets.getOutLine2()[0],ourTargets.getOutLine2()[1]), Point(ourTargets.getOutLine2()[2],ourTargets.getOutLine2()[3]), Scalar(0,0,255), 3, 8);
+							inFrame_zdm.getValue(midPoint.x, midPoint.y, & depth_value);
+							if(isnan(depth_value))
+							{
+								depth_value = 300;
+							}
+							RotatedRect rRect = ourTargets[k].getRectTarget();
+							Point2f vertices[4];
+							rRect.points(vertices);
+							for (int i = 0; i < 4; i++)
+								line(inFrameCopy, vertices[i], vertices[(i+1)%4], Scalar(0,255,0));
 							
 							
-			
+							framesSinceSeen = 0;
+							sampledHeight[p] = ourTargets[k].getHeight();
+							//cout << p << " , " << sampledHeight[p] << endl;
+							p++;
+							measurement.at<float>(0) = rotatedMidPoint.x;
+							measurement.at<float>(1) = rotatedMidPoint.y;
+							measurement.at<float>(2) = depth_value;
+							measurement.at<float>(3) = ourTargets[k].getOrientation();
+							measurement.at<float>(4) = ourTargets[k].getWidth();
+							measurement.at<float>(5) = ourTargets[k].getHeight();
+							putText(inFrameCopy, to_string(measurement.at<float>(2)), Point(300, 250), FONT_HERSHEY_SIMPLEX, 1, Scalar(0, 255, 0));
+							circle(inFrameCopy, midPoint, 5, Scalar(0,255,0),3);
+							//cout << "Angle:" << ourTargets[k].getOrientation() << endl;
+							//cout << "Measurement:" << measurement << endl;
+							if (!isTracked)
+							{	
+								lineTrackingKF.errorCovPre.at<float>(0,0) = 1;
+								lineTrackingKF.errorCovPre.at<float>(1,1) = 1;
+								lineTrackingKF.errorCovPre.at<float>(2,2) = 1;
+								lineTrackingKF.errorCovPre.at<float>(3,3) = 1;
+								lineTrackingKF.errorCovPre.at<float>(4,4) = 1;
+								lineTrackingKF.errorCovPre.at<float>(5,5) = 1;
+								lineTrackingKF.errorCovPre.at<float>(6,6) = 1;
+								lineTrackingKF.errorCovPre.at<float>(7,7) = 1;
+								lineTrackingKF.errorCovPre.at<float>(8,8) = 1;
+								lineTrackingKF.errorCovPre.at<float>(9,9) = 1;
+								
+								state.at<float>(0) = measurement.at<float>(0);
+								state.at<float>(1) = measurement.at<float>(1);
+								state.at<float>(2) = measurement.at<float>(2);
+								state.at<float>(3) = measurement.at<float>(3);
+								state.at<float>(4) = 0;
+								state.at<float>(5) = 0;
+								state.at<float>(6) = 0;
+								state.at<float>(7) = 0;
+								state.at<float>(8) = measurement.at<float>(4);
+								state.at<float>(9) = measurement.at<float>(5);
+								
+								lineTrackingKF.statePost = state;
+
+								//cout<<"Initializing filter" << endl;
+								end = std::chrono::steady_clock::now();
+								//cout<< "Time to instantiate tracking: " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << endl;
+							}
+							else
+							{
 							
-							
-							//cout<<"Initializing filter" << endl;
+							lineTrackingKF.correct(measurement);
 							end = std::chrono::steady_clock::now();
-							//cout<< "Time to instantiate tracking: " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << endl;
-						}
-						else
-						{
-						
-						lineTrackingKF.correct(measurement);
-						end = std::chrono::steady_clock::now();
-						//cout<< "Time to correct KF: " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << endl;
-						
-						//cout<<"Correcting Estimate" << endl;
-						}
+							//cout<< "Time to correct KF: " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << endl;
+							
+							//cout<<"Correcting Estimate" << endl;
+							}
+						//}
+						//}
+						isTracked = true;   
 					//}
-					//}
-					isTracked = true;   
-				//}
-				}
+					}
 				}
 			}	  
 		}
@@ -510,7 +551,10 @@ int main(int argc, char *argv[])
 		
 		
 	begin = std::chrono::steady_clock::now();
-	imshow("InputFrameCopy", inFrameCopy);
+// 	imshow("InputFrameCopy", inFrameCopy);
+// 	imshow("Left", inFrame);
+	imshow("Depth", inFrameCopy);
+// 	imshow("Confidence", inFrame_c);
 	end = std::chrono::steady_clock::now();
 	//cout<< "Time to output image: " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << endl;
 	//imshow("OutputFrame", outFrame);
@@ -518,4 +562,24 @@ int main(int argc, char *argv[])
 	if (waitKey(5) >= 0)
 	break;
 	}
+	
+	float sumMeanHeight = 0;
+	float sumMeanSquareHeight = 0;
+	float meanHeight = 0;
+	float meanSquareHeight = 0;
+	float varianceHeight = 0;
+	
+	for(size_t v = 0; v < numSamples; v ++)
+	{
+		sumMeanHeight += sampledHeight[v];
+		sumMeanSquareHeight += sampledHeight[v]*sampledHeight[v];
+		
+		
+	}
+	meanHeight = sumMeanHeight/numSamples;
+	meanSquareHeight = sumMeanSquareHeight/numSamples;
+	varianceHeight = meanSquareHeight - meanHeight*meanHeight;
+	
+	cout << "Height Mean: " << meanHeight << endl;
+	cout << "Heihgt Variance: " << varianceHeight << endl;
 }

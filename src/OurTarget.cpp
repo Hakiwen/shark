@@ -30,36 +30,16 @@ OurTarget::OurTarget(OurLine line1, OurLine line2, float maxAngleSeperation, int
 	originalLines.at<float>(6) = line1.getCvLine()[3];
 	originalLines.at<float>(7) = line2.getCvLine()[3];
 
-	rotationMatrix = cv::Mat(2, 2, CV_32F);
-
-
-	if(commonAxis > 0)
-	{
-
-		rotationMatrix.at<float>(0) = cos(CV_PI/2 -  (commonAxisR));
-		rotationMatrix.at<float>(1) = - sin(CV_PI/2 - (commonAxisR));
-		rotationMatrix.at<float>(2) = sin(CV_PI/2 - (commonAxisR));
-		rotationMatrix.at<float>(3) = cos(CV_PI/2 - (commonAxisR));
-
-		transformedLines = rotationMatrix * originalLines;
-	}
-	else
-	{
-		rotationMatrix.at<float>(0) = cos(- CV_PI/2 +  (commonAxisR));
-		rotationMatrix.at<float>(1) = - sin( - CV_PI/2 + (commonAxisR));
-		rotationMatrix.at<float>(2) = sin( - CV_PI/2 + (commonAxisR));
-		rotationMatrix.at<float>(3) = cos( - CV_PI/2 + (commonAxisR));
-
-		transformedLines = rotationMatrix.inv() * originalLines;
-	}
-	lowerPoint = max(min(transformedLines.at<float>(4), transformedLines.at<float>(6)), min(transformedLines.at<float>(5), transformedLines.at<float>(7)));
-	upperPoint = min(max(transformedLines.at<float>(4), transformedLines.at<float>(6)), max(transformedLines.at<float>(5), transformedLines.at<float>(7)));
+	transformedLines = rotate(originalLines, commonAxisR, true);
+	
+	lowerPoint = min(min(transformedLines.at<float>(4), transformedLines.at<float>(6)), min(transformedLines.at<float>(5), transformedLines.at<float>(7)));
+	upperPoint = max(max(transformedLines.at<float>(4), transformedLines.at<float>(6)), max(transformedLines.at<float>(5), transformedLines.at<float>(7)));
 	x1 = (max(transformedLines.at<float>(0) , transformedLines.at<float>(2)) - min(transformedLines.at<float>(0), transformedLines.at<float>(2)))/2 + min(transformedLines.at<float>(0), transformedLines.at<float>(2));
 	x2 = (max(transformedLines.at<float>(1) , transformedLines.at<float>(3)) - min(transformedLines.at<float>(1), transformedLines.at<float>(3)))/2 + min(transformedLines.at<float>(1), transformedLines.at<float>(3));
 
 	lineSeperation = max(x1, x2) - min(x1, x2);
 
-	if(((abs(maxAngle - minAngle) < maxAngleSeperation) && (abs(lineSeperation) < maxSeperation)) && ((commonAxis > (desiredAngle - angleRange)) && (commonAxis < (desiredAngle + angleRange)) || (commonAxis > (-desiredAngle - angleRange)) && (commonAxis < (-desiredAngle + angleRange))))
+	if(((abs(maxAngle - minAngle) < maxAngleSeperation) && (abs(lineSeperation) < maxSeperation) && (abs(lineSeperation) > 1)) && ((commonAxis > (desiredAngle - angleRange)) && (commonAxis < (desiredAngle + angleRange)) || (commonAxis > (-desiredAngle - angleRange)) && (commonAxis < (-desiredAngle + angleRange))))
 	{ 
 
 		isValidPair = true;
@@ -74,32 +54,29 @@ OurTarget::OurTarget(OurLine line1, OurLine line2, float maxAngleSeperation, int
 		adjustedLines.at<float>(6) = lowerPoint;
 		adjustedLines.at<float>(7) = upperPoint;
 		adjustedLines.at<float>(8) = upperPoint;
-		adjustedLines.at<float>(9) = (upperPoint - lowerPoint)/2 + lowerPoint;
+		adjustedLines.at<float>(9) = (upperPoint + lowerPoint)/2;
 
 
 		outputLines = cv::Mat(2, 5, CV_32F);
 
-		if(commonAxis > 0)
-			outputLines = rotationMatrix.inv() * adjustedLines;
-		else
-			outputLines = rotationMatrix  * adjustedLines;
+		outputLines = rotate(adjustedLines, commonAxisR, false);
 
-			newLine1[0] = outputLines.at<float>(0);
-			newLine1[1] = outputLines.at<float>(5);
-			newLine1[2] = outputLines.at<float>(2);
-			newLine1[3] = outputLines.at<float>(7);
-			newLine2[0] = outputLines.at<float>(1);
-			newLine2[1] = outputLines.at<float>(6);
-			newLine2[2] = outputLines.at<float>(3);
-			newLine2[3] = outputLines.at<float>(8);
+		newLine1[0] = outputLines.at<float>(0);
+		newLine1[1] = outputLines.at<float>(5);
+		newLine1[2] = outputLines.at<float>(2);
+		newLine1[3] = outputLines.at<float>(7);
+		newLine2[0] = outputLines.at<float>(1);
+		newLine2[1] = outputLines.at<float>(6);
+		newLine2[2] = outputLines.at<float>(3);
+		newLine2[3] = outputLines.at<float>(8);
 
-			midPoint.x = outputLines.at<float>(4);
-			midPoint.y = outputLines.at<float>(9);
+		midPoint.x = outputLines.at<float>(4);
+		midPoint.y = outputLines.at<float>(9);
 
-			width = lineSeperation;
-			height = upperPoint - lowerPoint;
+		width = lineSeperation;
+		height = upperPoint - lowerPoint;
 
-			rectTarget = RotatedRect(midPoint, Size2f(width,height), commonAxis + 90);
+		rectTarget = RotatedRect(midPoint, Size2f(width,height), commonAxis + 90);
 
 	}
 	else
@@ -114,6 +91,10 @@ Point OurTarget::getMidPoint()
 	return midPoint;
 }
 
+Point OurTarget::getRotatedMidPoint()
+{
+	return Point(lineSeperation/2 + min(x1, x2), (upperPoint + lowerPoint)/2);
+}
 int OurTarget::getWidth()
 {
 	return width;
@@ -142,6 +123,47 @@ RotatedRect OurTarget::getRectTarget()
 cv::Mat OurTarget::getAdjustedLines()
 {
 	return adjustedLines;
+}
+
+cv::Mat rotate(cv::Mat inLines, float axisIn, bool forwardTransform)
+{
+	cv::Mat rotationMatrix = cv::Mat(2, 2, CV_32F);
+	cv::Mat outLines;
+
+	if(axisIn > 0)
+	{
+
+		rotationMatrix.at<float>(0) = cos(CV_PI/2 -  (axisIn));
+		rotationMatrix.at<float>(1) = - sin(CV_PI/2 - (axisIn));
+		rotationMatrix.at<float>(2) = sin(CV_PI/2 - (axisIn));
+		rotationMatrix.at<float>(3) = cos(CV_PI/2 - (axisIn));
+		
+		if(forwardTransform)
+		{
+			outLines = rotationMatrix * inLines;
+		}
+		else
+		{
+			outLines = rotationMatrix.inv() * inLines;
+		}
+	}
+	else
+	{
+		rotationMatrix.at<float>(0) = cos(- CV_PI/2 +  (axisIn));
+		rotationMatrix.at<float>(1) = - sin( - CV_PI/2 + (axisIn));
+		rotationMatrix.at<float>(2) = sin( - CV_PI/2 + (axisIn));
+		rotationMatrix.at<float>(3) = cos( - CV_PI/2 + (axisIn));
+		
+		if(forwardTransform)
+		{
+			outLines = rotationMatrix.inv() * inLines;
+		}
+		else
+		{
+			outLines = rotationMatrix * inLines;
+		}
+	}
+	return outLines;
 }
 
 Vec4i OurTarget::getOutLine1()
