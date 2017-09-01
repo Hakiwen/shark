@@ -40,6 +40,7 @@ class OurTarget
 		int getHeight();
 		bool getIsValidPair();
 		float getOrientation();
+		float getOrientationR();
 		RotatedRect getRectTarget();
 		cv::Mat getAdjustedLines();
 		Vec4i getOutLine1();

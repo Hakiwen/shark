@@ -1,7 +1,7 @@
 file(REMOVE_RECURSE
-  "CMakeFiles/shark.dir/src/OurTarget.o"
   "CMakeFiles/shark.dir/src/OurLine.o"
   "CMakeFiles/shark.dir/src/main.o"
+  "CMakeFiles/shark.dir/src/OurTarget.o"
   "shark.pdb"
   "shark"
 )

@@ -41,17 +41,19 @@ iomanip
 -
 sstream
 -
-linux/input.h
--
 fcntl.h
 -
 OurTarget.h
 /home/nvidia/Shark/src/OurTarget.h
-sl/Camera.hpp
--
 opencv2/highgui.hpp
 -
 opencv2/video/tracking.hpp
+-
+sys/mman.h
+-
+linux/input.h
+-
+sl/Camera.hpp
 -
 opencv2/gpu/gpu.hpp
 -
@@ -581,8 +583,6 @@ sl/defines.hpp
 /usr/local/zed/include/sl/sl/defines.hpp
 cuda.h
 -
-opencv2/opencv.hpp
--
 
 /usr/local/zed/include/sl/Core.hpp
 sl/types.hpp
@@ -590,10 +590,6 @@ sl/types.hpp
 
 /usr/local/zed/include/sl/Mesh.hpp
 vector
--
-string
--
-fstream
 -
 sl/Core.hpp
 -
@@ -606,6 +602,8 @@ cstring
 iostream
 -
 vector
+-
+cmath
 -
 Windows.h
 -

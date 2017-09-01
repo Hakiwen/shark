@@ -110,6 +110,11 @@ float OurTarget::getOrientation()
 	return commonAxis;
 }
 
+float OurTarget::getOrientationR()
+{
+	return commonAxisR;
+}
+
 bool OurTarget::getIsValidPair()
 {
 	return isValidPair;
