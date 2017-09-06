@@ -57,90 +57,90 @@ include CMakeFiles/shark.dir/progress.make
 # Include the compile flags for this target's objects.
 include CMakeFiles/shark.dir/flags.make
 
-CMakeFiles/shark.dir/src/OurLine.o: CMakeFiles/shark.dir/flags.make
-CMakeFiles/shark.dir/src/OurLine.o: ../src/OurLine.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/nvidia/Shark/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/shark.dir/src/OurLine.o"
-	/usr/bin/c++   $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/shark.dir/src/OurLine.o -c /home/nvidia/Shark/src/OurLine.cpp
+CMakeFiles/shark.dir/src/OurLine.cpp.o: CMakeFiles/shark.dir/flags.make
+CMakeFiles/shark.dir/src/OurLine.cpp.o: ../src/OurLine.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/nvidia/Shark/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/shark.dir/src/OurLine.cpp.o"
+	/usr/bin/c++   $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/shark.dir/src/OurLine.cpp.o -c /home/nvidia/Shark/src/OurLine.cpp
 
-CMakeFiles/shark.dir/src/OurLine.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/shark.dir/src/OurLine.i"
-	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/nvidia/Shark/src/OurLine.cpp > CMakeFiles/shark.dir/src/OurLine.i
+CMakeFiles/shark.dir/src/OurLine.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/shark.dir/src/OurLine.cpp.i"
+	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/nvidia/Shark/src/OurLine.cpp > CMakeFiles/shark.dir/src/OurLine.cpp.i
 
-CMakeFiles/shark.dir/src/OurLine.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/shark.dir/src/OurLine.s"
-	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/nvidia/Shark/src/OurLine.cpp -o CMakeFiles/shark.dir/src/OurLine.s
+CMakeFiles/shark.dir/src/OurLine.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/shark.dir/src/OurLine.cpp.s"
+	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/nvidia/Shark/src/OurLine.cpp -o CMakeFiles/shark.dir/src/OurLine.cpp.s
 
-CMakeFiles/shark.dir/src/OurLine.o.requires:
+CMakeFiles/shark.dir/src/OurLine.cpp.o.requires:
 
-.PHONY : CMakeFiles/shark.dir/src/OurLine.o.requires
+.PHONY : CMakeFiles/shark.dir/src/OurLine.cpp.o.requires
 
-CMakeFiles/shark.dir/src/OurLine.o.provides: CMakeFiles/shark.dir/src/OurLine.o.requires
-	$(MAKE) -f CMakeFiles/shark.dir/build.make CMakeFiles/shark.dir/src/OurLine.o.provides.build
-.PHONY : CMakeFiles/shark.dir/src/OurLine.o.provides
+CMakeFiles/shark.dir/src/OurLine.cpp.o.provides: CMakeFiles/shark.dir/src/OurLine.cpp.o.requires
+	$(MAKE) -f CMakeFiles/shark.dir/build.make CMakeFiles/shark.dir/src/OurLine.cpp.o.provides.build
+.PHONY : CMakeFiles/shark.dir/src/OurLine.cpp.o.provides
 
-CMakeFiles/shark.dir/src/OurLine.o.provides.build: CMakeFiles/shark.dir/src/OurLine.o
-
-
-CMakeFiles/shark.dir/src/main.o: CMakeFiles/shark.dir/flags.make
-CMakeFiles/shark.dir/src/main.o: ../src/main.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/nvidia/Shark/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/shark.dir/src/main.o"
-	/usr/bin/c++   $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/shark.dir/src/main.o -c /home/nvidia/Shark/src/main.cpp
-
-CMakeFiles/shark.dir/src/main.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/shark.dir/src/main.i"
-	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/nvidia/Shark/src/main.cpp > CMakeFiles/shark.dir/src/main.i
-
-CMakeFiles/shark.dir/src/main.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/shark.dir/src/main.s"
-	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/nvidia/Shark/src/main.cpp -o CMakeFiles/shark.dir/src/main.s
-
-CMakeFiles/shark.dir/src/main.o.requires:
-
-.PHONY : CMakeFiles/shark.dir/src/main.o.requires
-
-CMakeFiles/shark.dir/src/main.o.provides: CMakeFiles/shark.dir/src/main.o.requires
-	$(MAKE) -f CMakeFiles/shark.dir/build.make CMakeFiles/shark.dir/src/main.o.provides.build
-.PHONY : CMakeFiles/shark.dir/src/main.o.provides
-
-CMakeFiles/shark.dir/src/main.o.provides.build: CMakeFiles/shark.dir/src/main.o
+CMakeFiles/shark.dir/src/OurLine.cpp.o.provides.build: CMakeFiles/shark.dir/src/OurLine.cpp.o
 
 
-CMakeFiles/shark.dir/src/OurTarget.o: CMakeFiles/shark.dir/flags.make
-CMakeFiles/shark.dir/src/OurTarget.o: ../src/OurTarget.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/nvidia/Shark/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/shark.dir/src/OurTarget.o"
-	/usr/bin/c++   $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/shark.dir/src/OurTarget.o -c /home/nvidia/Shark/src/OurTarget.cpp
+CMakeFiles/shark.dir/src/main.cpp.o: CMakeFiles/shark.dir/flags.make
+CMakeFiles/shark.dir/src/main.cpp.o: ../src/main.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/nvidia/Shark/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/shark.dir/src/main.cpp.o"
+	/usr/bin/c++   $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/shark.dir/src/main.cpp.o -c /home/nvidia/Shark/src/main.cpp
 
-CMakeFiles/shark.dir/src/OurTarget.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/shark.dir/src/OurTarget.i"
-	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/nvidia/Shark/src/OurTarget.cpp > CMakeFiles/shark.dir/src/OurTarget.i
+CMakeFiles/shark.dir/src/main.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/shark.dir/src/main.cpp.i"
+	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/nvidia/Shark/src/main.cpp > CMakeFiles/shark.dir/src/main.cpp.i
 
-CMakeFiles/shark.dir/src/OurTarget.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/shark.dir/src/OurTarget.s"
-	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/nvidia/Shark/src/OurTarget.cpp -o CMakeFiles/shark.dir/src/OurTarget.s
+CMakeFiles/shark.dir/src/main.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/shark.dir/src/main.cpp.s"
+	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/nvidia/Shark/src/main.cpp -o CMakeFiles/shark.dir/src/main.cpp.s
 
-CMakeFiles/shark.dir/src/OurTarget.o.requires:
+CMakeFiles/shark.dir/src/main.cpp.o.requires:
 
-.PHONY : CMakeFiles/shark.dir/src/OurTarget.o.requires
+.PHONY : CMakeFiles/shark.dir/src/main.cpp.o.requires
 
-CMakeFiles/shark.dir/src/OurTarget.o.provides: CMakeFiles/shark.dir/src/OurTarget.o.requires
-	$(MAKE) -f CMakeFiles/shark.dir/build.make CMakeFiles/shark.dir/src/OurTarget.o.provides.build
-.PHONY : CMakeFiles/shark.dir/src/OurTarget.o.provides
+CMakeFiles/shark.dir/src/main.cpp.o.provides: CMakeFiles/shark.dir/src/main.cpp.o.requires
+	$(MAKE) -f CMakeFiles/shark.dir/build.make CMakeFiles/shark.dir/src/main.cpp.o.provides.build
+.PHONY : CMakeFiles/shark.dir/src/main.cpp.o.provides
 
-CMakeFiles/shark.dir/src/OurTarget.o.provides.build: CMakeFiles/shark.dir/src/OurTarget.o
+CMakeFiles/shark.dir/src/main.cpp.o.provides.build: CMakeFiles/shark.dir/src/main.cpp.o
+
+
+CMakeFiles/shark.dir/src/OurTarget.cpp.o: CMakeFiles/shark.dir/flags.make
+CMakeFiles/shark.dir/src/OurTarget.cpp.o: ../src/OurTarget.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/nvidia/Shark/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/shark.dir/src/OurTarget.cpp.o"
+	/usr/bin/c++   $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/shark.dir/src/OurTarget.cpp.o -c /home/nvidia/Shark/src/OurTarget.cpp
+
+CMakeFiles/shark.dir/src/OurTarget.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/shark.dir/src/OurTarget.cpp.i"
+	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/nvidia/Shark/src/OurTarget.cpp > CMakeFiles/shark.dir/src/OurTarget.cpp.i
+
+CMakeFiles/shark.dir/src/OurTarget.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/shark.dir/src/OurTarget.cpp.s"
+	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/nvidia/Shark/src/OurTarget.cpp -o CMakeFiles/shark.dir/src/OurTarget.cpp.s
+
+CMakeFiles/shark.dir/src/OurTarget.cpp.o.requires:
+
+.PHONY : CMakeFiles/shark.dir/src/OurTarget.cpp.o.requires
+
+CMakeFiles/shark.dir/src/OurTarget.cpp.o.provides: CMakeFiles/shark.dir/src/OurTarget.cpp.o.requires
+	$(MAKE) -f CMakeFiles/shark.dir/build.make CMakeFiles/shark.dir/src/OurTarget.cpp.o.provides.build
+.PHONY : CMakeFiles/shark.dir/src/OurTarget.cpp.o.provides
+
+CMakeFiles/shark.dir/src/OurTarget.cpp.o.provides.build: CMakeFiles/shark.dir/src/OurTarget.cpp.o
 
 
 # Object files for target shark
 shark_OBJECTS = \
-"CMakeFiles/shark.dir/src/OurLine.o" \
-"CMakeFiles/shark.dir/src/main.o" \
-"CMakeFiles/shark.dir/src/OurTarget.o"
+"CMakeFiles/shark.dir/src/OurLine.cpp.o" \
+"CMakeFiles/shark.dir/src/main.cpp.o" \
+"CMakeFiles/shark.dir/src/OurTarget.cpp.o"
 
 # External object files for target shark
 shark_EXTERNAL_OBJECTS =
 
-shark: CMakeFiles/shark.dir/src/OurLine.o
-shark: CMakeFiles/shark.dir/src/main.o
-shark: CMakeFiles/shark.dir/src/OurTarget.o
+shark: CMakeFiles/shark.dir/src/OurLine.cpp.o
+shark: CMakeFiles/shark.dir/src/main.cpp.o
+shark: CMakeFiles/shark.dir/src/OurTarget.cpp.o
 shark: CMakeFiles/shark.dir/build.make
 shark: /usr/local/zed/lib/libsl_zed.so
 shark: /usr/local/zed/lib/libsl_depthcore.so
@@ -150,8 +150,6 @@ shark: /usr/local/zed/lib/libsl_disparityFusion.so
 shark: /usr/local/zed/lib/libsl_svorw.so
 shark: /usr/local/zed/lib/libsl_scanning.so
 shark: /usr/local/zed/lib/libsl_core.so
-shark: /usr/local/zed/lib/libcudpp.so
-shark: /usr/local/zed/lib/libcudpp_hash.so
 shark: /usr/lib/libopencv_vstab.so.2.4.13
 shark: /usr/lib/libopencv_imuvstab.so.2.4.13
 shark: /usr/lib/libopencv_facedetect.so.2.4.13
@@ -189,9 +187,9 @@ CMakeFiles/shark.dir/build: shark
 
 .PHONY : CMakeFiles/shark.dir/build
 
-CMakeFiles/shark.dir/requires: CMakeFiles/shark.dir/src/OurLine.o.requires
-CMakeFiles/shark.dir/requires: CMakeFiles/shark.dir/src/main.o.requires
-CMakeFiles/shark.dir/requires: CMakeFiles/shark.dir/src/OurTarget.o.requires
+CMakeFiles/shark.dir/requires: CMakeFiles/shark.dir/src/OurLine.cpp.o.requires
+CMakeFiles/shark.dir/requires: CMakeFiles/shark.dir/src/main.cpp.o.requires
+CMakeFiles/shark.dir/requires: CMakeFiles/shark.dir/src/OurTarget.cpp.o.requires
 
 .PHONY : CMakeFiles/shark.dir/requires
 

@@ -123,50 +123,86 @@ shark/fast:
 	$(MAKE) -f CMakeFiles/shark.dir/build.make CMakeFiles/shark.dir/build
 .PHONY : shark/fast
 
-# target to build an object file
-src/OurLine.o:
-	$(MAKE) -f CMakeFiles/shark.dir/build.make CMakeFiles/shark.dir/src/OurLine.o
+src/OurLine.o: src/OurLine.cpp.o
+
 .PHONY : src/OurLine.o
 
-# target to preprocess a source file
-src/OurLine.i:
-	$(MAKE) -f CMakeFiles/shark.dir/build.make CMakeFiles/shark.dir/src/OurLine.i
+# target to build an object file
+src/OurLine.cpp.o:
+	$(MAKE) -f CMakeFiles/shark.dir/build.make CMakeFiles/shark.dir/src/OurLine.cpp.o
+.PHONY : src/OurLine.cpp.o
+
+src/OurLine.i: src/OurLine.cpp.i
+
 .PHONY : src/OurLine.i
 
-# target to generate assembly for a file
-src/OurLine.s:
-	$(MAKE) -f CMakeFiles/shark.dir/build.make CMakeFiles/shark.dir/src/OurLine.s
+# target to preprocess a source file
+src/OurLine.cpp.i:
+	$(MAKE) -f CMakeFiles/shark.dir/build.make CMakeFiles/shark.dir/src/OurLine.cpp.i
+.PHONY : src/OurLine.cpp.i
+
+src/OurLine.s: src/OurLine.cpp.s
+
 .PHONY : src/OurLine.s
 
-# target to build an object file
-src/OurTarget.o:
-	$(MAKE) -f CMakeFiles/shark.dir/build.make CMakeFiles/shark.dir/src/OurTarget.o
+# target to generate assembly for a file
+src/OurLine.cpp.s:
+	$(MAKE) -f CMakeFiles/shark.dir/build.make CMakeFiles/shark.dir/src/OurLine.cpp.s
+.PHONY : src/OurLine.cpp.s
+
+src/OurTarget.o: src/OurTarget.cpp.o
+
 .PHONY : src/OurTarget.o
 
-# target to preprocess a source file
-src/OurTarget.i:
-	$(MAKE) -f CMakeFiles/shark.dir/build.make CMakeFiles/shark.dir/src/OurTarget.i
+# target to build an object file
+src/OurTarget.cpp.o:
+	$(MAKE) -f CMakeFiles/shark.dir/build.make CMakeFiles/shark.dir/src/OurTarget.cpp.o
+.PHONY : src/OurTarget.cpp.o
+
+src/OurTarget.i: src/OurTarget.cpp.i
+
 .PHONY : src/OurTarget.i
 
-# target to generate assembly for a file
-src/OurTarget.s:
-	$(MAKE) -f CMakeFiles/shark.dir/build.make CMakeFiles/shark.dir/src/OurTarget.s
+# target to preprocess a source file
+src/OurTarget.cpp.i:
+	$(MAKE) -f CMakeFiles/shark.dir/build.make CMakeFiles/shark.dir/src/OurTarget.cpp.i
+.PHONY : src/OurTarget.cpp.i
+
+src/OurTarget.s: src/OurTarget.cpp.s
+
 .PHONY : src/OurTarget.s
 
-# target to build an object file
-src/main.o:
-	$(MAKE) -f CMakeFiles/shark.dir/build.make CMakeFiles/shark.dir/src/main.o
+# target to generate assembly for a file
+src/OurTarget.cpp.s:
+	$(MAKE) -f CMakeFiles/shark.dir/build.make CMakeFiles/shark.dir/src/OurTarget.cpp.s
+.PHONY : src/OurTarget.cpp.s
+
+src/main.o: src/main.cpp.o
+
 .PHONY : src/main.o
 
-# target to preprocess a source file
-src/main.i:
-	$(MAKE) -f CMakeFiles/shark.dir/build.make CMakeFiles/shark.dir/src/main.i
+# target to build an object file
+src/main.cpp.o:
+	$(MAKE) -f CMakeFiles/shark.dir/build.make CMakeFiles/shark.dir/src/main.cpp.o
+.PHONY : src/main.cpp.o
+
+src/main.i: src/main.cpp.i
+
 .PHONY : src/main.i
 
-# target to generate assembly for a file
-src/main.s:
-	$(MAKE) -f CMakeFiles/shark.dir/build.make CMakeFiles/shark.dir/src/main.s
+# target to preprocess a source file
+src/main.cpp.i:
+	$(MAKE) -f CMakeFiles/shark.dir/build.make CMakeFiles/shark.dir/src/main.cpp.i
+.PHONY : src/main.cpp.i
+
+src/main.s: src/main.cpp.s
+
 .PHONY : src/main.s
+
+# target to generate assembly for a file
+src/main.cpp.s:
+	$(MAKE) -f CMakeFiles/shark.dir/build.make CMakeFiles/shark.dir/src/main.cpp.s
+.PHONY : src/main.cpp.s
 
 # Help Target
 help:

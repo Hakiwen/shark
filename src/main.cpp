@@ -5,52 +5,23 @@
 #include <iomanip>
 #include <sstream>
 
-#include <fcntl.h>
 #include "OurTarget.h"
 
 #include <opencv2/highgui.hpp>
 #include <opencv2/video/tracking.hpp>
 
-#include <sys/mman.h>
-#define linux
-#define zed
-
-#ifdef linux
-#include <linux/input.h>
-#endif
-
-#ifdef win
-
-#endif
-
-#ifdef zed 
+#ifdef ZED 
 #include <sl/Camera.hpp>
 #include <opencv2/gpu/gpu.hpp>
 #endif
 
 using namespace std;
 using namespace cv;
+
+#ifdef ZED
 using namespace sl;
-
-Point ptPIR(0, 0);
-int newCoordsPIR = false;
-bool sim_mode;
-
-
-
 ERROR_CODE err;
 RuntimeParameters runtime_parameters;
-
-
-void mouse_callback(int eventPIR, int xPIR,int yPIR, int flagPIR, void *paramPIR)
-{
-	if (eventPIR == EVENT_LBUTTONDOWN)
-	{
-		ptPIR.x = xPIR;
-		ptPIR.y = yPIR;
-		newCoordsPIR = true;
-	}
-}
 
 cv::Mat findLines(cv::Mat input_frame, int cannyThresh1, int cannyThresh2, float rhod, float th, int minLineLengthP, int maxLineGapP)
 {
@@ -68,12 +39,6 @@ cv::Mat findLines(cv::Mat input_frame, int cannyThresh1, int cannyThresh2, float
 	g_linesP.download(linesPMat);
 	return linesPMat;
 		
-}
-
-cv::Mat fetchLines()
-{
-	cv::Mat received;
-	return received;
 }
 
 cv::Vec2f findDepth(OurTarget inputTarget, sl::Mat inputDepth, int numDepthPoints)
@@ -130,25 +95,48 @@ cv::Vec2f findDepth(OurTarget inputTarget, sl::Mat inputDepth, int numDepthPoint
 	}
 }
 
+#endif
+
+Point ptPIR(0, 0);
+int newCoordsPIR = false;
+bool sim_mode;
+
+
+
+
+
+
+void mouse_callback(int eventPIR, int xPIR,int yPIR, int flagPIR, void *paramPIR)
+{
+	if (eventPIR == EVENT_LBUTTONDOWN)
+	{
+		ptPIR.x = xPIR;
+		ptPIR.y = yPIR;
+		newCoordsPIR = true;
+	}
+}
+
+void write2GUST(cv::Mat state)
+{
+}
+
+
+cv::Mat fetchLines()
+{
+	cv::Mat received;
+	return received;
+}
+
+float fetchDepth()
+{
+	float depth_received;
+	return depth_received;
+}
+
+
 int main(int argc, char *argv[])
 {
-	if (argc != 3)
-	{
-		cout << "Usage: " << argv[0] << " --mode SIM/VEHICLE" << endl;
-		return 1;
-	}
-	
-	if (std::string(argv[1]) == "--SIM")
-	{
-		sim_mode == true;
-	}
-	else if (std::string(argv[1]) == "--VEHICLE")
-	{
-		sim_mode == false;
-	}
-	
-	if(!sim_mode)
-	{
+#ifdef ZED
 		//ocv gpu 
 		int availableGPU = cv::gpu::getCudaEnabledDeviceCount();
 		cout << availableGPU << " GPUs Found" << endl;
@@ -160,9 +148,8 @@ int main(int argc, char *argv[])
 		}
 		cv::gpu::setDevice(0);
 		//ALLOC_ZEROCOPY = 2
-	
-		//ZED initialize and Params
 		Camera zed;
+		//ZED initialize and Params
 		InitParameters init_params;
 		init_params.camera_resolution = RESOLUTION_VGA;
 		init_params.camera_fps = 15;
@@ -183,8 +170,10 @@ int main(int argc, char *argv[])
 
 		zed.setDepthMaxRangeValue(10000);
 		runtime_parameters.sensing_mode = SENSING_MODE_FILL;
+		int numDepthPoints = 20;
+		sl::Mat inFrame_zl, inFrame_zr, inFrame_zd, inFrame_zq, inFrame_zdm, inFrame_zcm,  inFrame_zc;
 	
-	}
+#endif
 	
 	//Line finding params
 	float rhod = 1;
@@ -238,7 +227,7 @@ int main(int argc, char *argv[])
 	
 
 	//CV Objects
-	sl::Mat inFrame_zl, inFrame_zr, inFrame_zd, inFrame_zq, inFrame_zdm, inFrame_zcm,  inFrame_zc;
+
 	cv::Mat inFrame_l, inFrame_r, inFrame_d, inFrame_c, inFrame, inFrameCopy,  outFrame, outFrameTemp, linesPMat, canny_d, canny_l, canny_c;
 	vector<Vec2f> lines;
 	vector<Vec4i> linesP;
@@ -362,35 +351,34 @@ int main(int argc, char *argv[])
 		ticks = (double) cv::getTickCount();
 		double dT = (ticks - precTick) / cv::getTickFrequency(); //sfleconds
 		//Grabs and converts all the images from ZED
-		if(!sim_mode)
+#ifdef ZED
+		err = zed.grab(runtime_parameters);
+		err = zed.retrieveImage(inFrame_zl, VIEW_LEFT);
+		inFrame_l = cv::Mat(inFrame_zl.getHeight(), inFrame_zl.getWidth(), CV_8UC4, inFrame_zl.getPtr<sl::uchar1>(sl::MEM_CPU));
+	
+		err = zed.retrieveMeasure(inFrame_zdm);
+	
+	
+// 		err = zed.retrieveMeasure(inFrame_zcm, MEASURE_CONFIDENCE);
+		
+// 		err = zed.retrieveImage(inFrame_zd, VIEW_DEPTH);
+// 		inFrame_d = cv::Mat(inFrame_zd.getHeight(), inFrame_zd.getWidth(), CV_8UC4, inFrame_zd.getPtr<sl::uchar1>(sl::MEM_CPU));
+		
+// 		err = zed.retrieveImage(inFrame_zc , VIEW_CONFIDENCE);
+// 		inFrame_c = cv::Mat(inFrame_zc.getHeight(), inFrame_zc.getWidth(), CV_8UC4, inFrame_zc.getPtr<sl::uchar1>(sl::MEM_CPU));
+		inFrame = inFrame_l;
+		
+		inFrame_l.copyTo(inFrameCopy);
+		
+		
+		end = std::chrono::steady_clock::now();
+// 		cout<< "Time to Grab Images: " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << endl;
+		if(inFrame.empty())
 		{
-			err == zed.grab(runtime_parameters);
-			err = zed.retrieveImage(inFrame_zl, VIEW_LEFT);
-			inFrame_l = cv::Mat(inFrame_zl.getHeight(), inFrame_zl.getWidth(), CV_8UC4, inFrame_zl.getPtr<sl::uchar1>(sl::MEM_CPU));
-		
-			err = zed.retrieveMeasure(inFrame_zdm);
- 		
-		
-	// 		err = zed.retrieveMeasure(inFrame_zcm, MEASURE_CONFIDENCE);
-			
-	// 		err = zed.retrieveImage(inFrame_zd, VIEW_DEPTH);
-	// 		inFrame_d = cv::Mat(inFrame_zd.getHeight(), inFrame_zd.getWidth(), CV_8UC4, inFrame_zd.getPtr<sl::uchar1>(sl::MEM_CPU));
-			
-	// 		err = zed.retrieveImage(inFrame_zc , VIEW_CONFIDENCE);
-	// 		inFrame_c = cv::Mat(inFrame_zc.getHeight(), inFrame_zc.getWidth(), CV_8UC4, inFrame_zc.getPtr<sl::uchar1>(sl::MEM_CPU));
-			inFrame = inFrame_l;
-			
-			inFrame_l.copyTo(inFrameCopy);
-			
-			
-			end = std::chrono::steady_clock::now();
-	// 		cout<< "Time to Grab Images: " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << endl;
-			if(inFrame.empty())
-			{
-				cout << "Blank frame \n";
-				return -1;
-			}
+			cout << "Blank frame \n";
+			return -1;
 		}
+#endif
 		if (isTracked)
 		{
 			
@@ -419,29 +407,27 @@ int main(int argc, char *argv[])
 			RotatedRect sRect = RotatedRect(Point(estMidPointMat.at<float>(0), estMidPointMat.at<float>(1)), Size2f(state.at<float>(8), state.at<float>(9)), state.at<float>(3) + 90);
 			//cout << "Estimated Angle: " << state.at<float>(3) << endl;
 			
+
+#ifdef ZED
 			Point2f verticesSRect[4];
 			sRect.points(verticesSRect);
-			if(!sim_mode)
-			{
-				for (int i = 0; i < 4; i++)
-					line(inFrameCopy, verticesSRect[i], verticesSRect[(i+1)%4], Scalar(255,255,255));
-				//rectangle(inFrameCopy, Point(startXOfRect, startYOfRect), Point(startXOfRect + colsOfRect, startYOfRect + rowsOfRect), Scalar(255, 255, 255));
-				
-				putText(inFrameCopy, to_string(state.at<float>(2)), Point(300, 300), FONT_HERSHEY_SIMPLEX, 1, Scalar(255, 255 , 255));
-				circle(inFrameCopy, estMidPoint, 5, Scalar(255,255,255),3);
-				//inFrame(cv::Rect(startXOfRect, startYOfRect, colsOfRect, rowsOfRect)).copyTo(inFrameTemp);
-			}
+			for (int i = 0; i < 4; i++)
+				line(inFrameCopy, verticesSRect[i], verticesSRect[(i+1)%4], Scalar(255,255,255));
+			//rectangle(inFrameCopy, Point(startXOfRect, startYOfRect), Point(startXOfRect + colsOfRect, startYOfRect + rowsOfRect), Scalar(255, 255, 255));
+			
+			putText(inFrameCopy, to_string(state.at<float>(2)), Point(300, 300), FONT_HERSHEY_SIMPLEX, 1, Scalar(255, 255 , 255));
+			circle(inFrameCopy, estMidPoint, 5, Scalar(255,255,255),3);
+			//inFrame(cv::Rect(startXOfRect, startYOfRect, colsOfRect, rowsOfRect)).copyTo(inFrameTemp);
+#endif
 		}
 		
 		begin = std::chrono::steady_clock::now();
-		if(sim_mode)
-		{
-			linesPMat = fetchLines();
-		}
-		else
-		{
-			linesPMat = findLines(inFrame,  cannyThresh1,  cannyThresh2,  rhod,  th,  minLineLengthP,  maxLineGapP);
-		}
+#ifdef ZED
+		linesPMat = findLines(inFrame,  cannyThresh1,  cannyThresh2,  rhod,  th,  minLineLengthP,  maxLineGapP);
+			
+#else
+		linesPMat = fetchLines();
+#endif
 		end = std::chrono::steady_clock::now();
 
 // 		cout<< "Time to Run Transform: " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << endl;
@@ -495,15 +481,20 @@ int main(int argc, char *argv[])
 				lastMidPoint = midPoint;
 				cv::Mat adjustedLines = ourTargets[indexClosestToEstimate].getAdjustedLines();
 				//inFrame_zdm.getValue(midPoint.x, midPoint.y, & depth_value);
-				if(! isValidMeasure(depth_value))
-				{
-					depth_value = state.at<float>(2);
-				}
 				RotatedRect rRect = ourTargets[indexClosestToEstimate].getRectTarget();
+				
+#ifdef ZED
 				Point2f vertices[4];
 				rRect.points(vertices);
 				for (int i = 0; i < 4; i++)
 					line(inFrameCopy, vertices[i], vertices[(i+1)%4], Scalar(0,255,0));
+				
+				depth_value = findDepth(ourTargets[indexClosestToEstimate], inFrame_zdm, numDepthPoints)[1];
+#else
+				depth_value = fetchDepth();
+#endif
+				
+				
 				
 				
 				framesSinceSeen = 0;
@@ -570,7 +561,11 @@ int main(int argc, char *argv[])
 	begin = std::chrono::steady_clock::now();
 // 	imshow("InputFrameCopy", inFrameCopy);
 // 	imshow("Depth", inFrame_d);
+#ifdef ZED
 	imshow("Out", inFrameCopy);
+#else
+	write2GUST(state);
+#endif
 // 	imshow("Confidence", inFrame_c);
 	end = std::chrono::steady_clock::now();
 	//cout<< "Time to output image: " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << endl;
