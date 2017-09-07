@@ -10,12 +10,12 @@ OurLine::OurLine(Vec4i cvLine)
 	greaterX = max(cvLine[2], cvLine[0]);
 	lesserY = min(cvLine[1], cvLine[3]);
 	greaterY = max(cvLine[1], cvLine[3]);
-	angleP = atan2((cvLine[3] - cvLine[1]),(cvLine[2] - cvLine[0]));
+	angleP = atan2(float((cvLine[3] - cvLine[1])),float((cvLine[2] - cvLine[0])));
 
 	angleD = angleP*(180/CV_PI);
 	currentWidth = greaterX - lesserX;
 	currentHeight = greaterY - lesserY;
-	length = sqrt(currentHeight*currentHeight + currentWidth*currentWidth);
+	length = sqrt(float(currentHeight*currentHeight + currentWidth*currentWidth));
 	midPoint = Point((greaterX - lesserX)/2 + lesserX, (greaterY - lesserY)/2 + lesserY);
 }
 

@@ -215,11 +215,6 @@ int main(int argc, char *argv[])
 	
 	
 	//Eval Vars
-	std::chrono::steady_clock::time_point begin;
-	std::chrono::steady_clock::time_point end;
-	std::chrono::steady_clock::time_point lastStart = std::chrono::steady_clock::now();
-	std::chrono::steady_clock::time_point thisStart;
-	std::chrono::steady_clock::time_point thisCycleTime;
 	float avgCycleTime = 0;
 	float avgNotCycleTime = 0;
 	int numCyclesFound = 0;
@@ -333,19 +328,9 @@ int main(int argc, char *argv[])
 	int p = 0;
 	while(p < numSamples)
 	{	
-		thisStart = std::chrono::steady_clock::now();
-		if(foundTarget)
-		{	
-			sampledTimeF.push_back(std::chrono::duration_cast<std::chrono::microseconds>(thisStart - lastStart).count());
-		}
-		else
-		{
-			sampledTimeNF.push_back(std::chrono::duration_cast<std::chrono::microseconds>(thisStart - lastStart).count());
-		}
-		cout << "p: " << p << "Cycle Time: " << (std::chrono::duration_cast<std::chrono::microseconds>(thisStart - lastStart).count()) << " foundTarget : " <<  foundTarget << endl;
+
 		p++;
-		lastStart = thisStart;
-		begin = std::chrono::steady_clock::now();
+
 		cv::Mat inFrameTemp;
 		double precTick = ticks;
 		ticks = (double) cv::getTickCount();
@@ -371,8 +356,8 @@ int main(int argc, char *argv[])
 		inFrame_l.copyTo(inFrameCopy);
 		
 		
-		end = std::chrono::steady_clock::now();
-// 		cout<< "Time to Grab Images: " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << endl;
+
+
 		if(inFrame.empty())
 		{
 			cout << "Blank frame \n";
@@ -421,23 +406,22 @@ int main(int argc, char *argv[])
 #endif
 		}
 		
-		begin = std::chrono::steady_clock::now();
+
 #ifdef ZED
 		linesPMat = findLines(inFrame,  cannyThresh1,  cannyThresh2,  rhod,  th,  minLineLengthP,  maxLineGapP);
 			
 #else
 		linesPMat = fetchLines();
 #endif
-		end = std::chrono::steady_clock::now();
 
-// 		cout<< "Time to Run Transform: " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << endl;
-		begin = std::chrono::steady_clock::now();
+
+
  		if (linesPMat.total() > 0)
  		{
-			Vec4i linesP[linesPMat.total()];
+			Vec4i linesP[20];
 			foundTarget = false;
-			OurLine ourLines[linesPMat.total()];
-			OurTarget ourTargets[linesPMat.total()*linesPMat.total()];
+			OurLine ourLines[20];
+			OurTarget ourTargets[400];
 			numTargets = 0;
 			lastMidPoint = Point(0,0);
 			for( int i = 0; i < linesPMat.total(); i++ )
@@ -506,8 +490,10 @@ int main(int argc, char *argv[])
 				measurement.at<float>(3) = ourTargets[indexClosestToEstimate].getOrientation();
 				measurement.at<float>(4) = ourTargets[indexClosestToEstimate].getWidth();
 				measurement.at<float>(5) = ourTargets[indexClosestToEstimate].getHeight();
+#ifdef ZED
 				putText(inFrameCopy, to_string(measurement.at<float>(2)), Point(300, 250), FONT_HERSHEY_SIMPLEX, 1, Scalar(0, 255, 0));
 				circle(inFrameCopy, midPoint, 5, Scalar(0,255,0),3);
+#endif
 				//cout << "Angle:" << ourTargets[k].getOrientation() << endl;
 				//cout << "Measurement:" << measurement << endl;
 				if (!isTracked)
@@ -536,12 +522,12 @@ int main(int argc, char *argv[])
 					
 					lineTrackingKF.statePost = state;
 
-					end = std::chrono::steady_clock::now();
+
 				}
 				else
 				{
 					lineTrackingKF.correct(measurement);
-					end = std::chrono::steady_clock::now();
+
 				}
 				isTracked = true;
 			}
@@ -554,11 +540,11 @@ int main(int argc, char *argv[])
 				isTracked = false;
 		}
 		
-		end = std::chrono::steady_clock::now();
 
-// 		cout<< "Time to Evaluate Transform: " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << endl;
+
+
 		
-	begin = std::chrono::steady_clock::now();
+
 // 	imshow("InputFrameCopy", inFrameCopy);
 // 	imshow("Depth", inFrame_d);
 #ifdef ZED
@@ -567,8 +553,8 @@ int main(int argc, char *argv[])
 	write2GUST(state);
 #endif
 // 	imshow("Confidence", inFrame_c);
-	end = std::chrono::steady_clock::now();
-	//cout<< "Time to output image: " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << endl;
+
+
 	//imshow("OutputFrame", outFrame);
 
 	if (waitKey(5) >= 0)
