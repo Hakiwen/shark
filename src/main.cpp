@@ -15,6 +15,11 @@
 #include <opencv2/gpu/gpu.hpp>
 #endif
 
+#ifdef GUST
+#include <boost/interprocess/shared_memory_object.hpp>
+#include <boost/interprocess/mapped_region.hpp>
+#endif
+
 using namespace std;
 using namespace cv;
 
