@@ -1,0 +1,35 @@
+%include "gcv/gcv.dbh"
+
+%Dir gcvGrabber_ref {
+} LdtGrabber;
+
+%Dir gcvGrabber_ref {
+} LdtGrabber2;
+
+%Dir Ldt_ref {
+  voidptr obj = 0 : ;
+  dir gcvGrabber_ref  fg    = fgSimpleGrabber      : ;
+  dir gcvGrabber_ref  fg2   = fgSimpleGrabber2     : ;
+  int runLdt                = 0               : ;
+  int shareshark            = 0               : ;
+  int readboost             = 0               : ;
+  int runedge               = 0               : ;
+  int runline               = 0               : ;
+  int showchannel           = 0               : ;
+  int showsrc               = 0               : ;
+  int showsrc2              = 0               : ;
+  int showgray              = 0               : ;
+  int showedge              = 0               : ;
+  int showline              = 0               : ;
+  float edge_thresh         = 30              : ;
+  float line_thresh         = 120             : ;
+  int num_hlines            = 20              : ;
+  float ang_range           = 0.0125          : ;
+  int sendImage             = 1               : ;
+  int txquality             = 2               : ;
+  double sendDt             = 0.1             : seconds, frequency at which to send image via dataport ;
+  double lastSend           = 0               : last time an image was sent;
+  double targetNED[3] 		= {0 , 0 , 0}     : target coordinates in NED;
+} Ldt;
+
+

@@ -1,0 +1,228 @@
+#go where there is some water
+cd navinit
+datumLat = 36.955802
+datumLon = -76.301024
+datumAlt = 0.00
+sceneGlobal.buildingPos[0][0]=100000
+sceneGlobal.timeLabelStep = 0
+
+
+wdbclear
+
+wdbset gcswdb
+
+wdbdatumned
+
+# Add buildings to the scene
+ #wdbadd building ned       px   py    lt  alt  dx   dy   dz   heading color
+ wdbadd building ned       100     0   lt   0   19   84   20   -90 yellow
+ wdbadd building ned       100   -40   lt   0   49   25   20   -180 pink
+ wdbadd building ned       100   40   lt   0   63   60   25   0 brown
+
+ # telephone poles
+
+ #wdbadd pole  ned     px   py     lt   alt  height
+ wdbadd pole ned      50   -20   lt   0    40   0
+ wdbadd pole ned      50   20   lt   0    40   0
+
+#better settings for AGL
+navset.QperV=0
+
+
+#textures
+sceneGlobal.overlaySource=1
+gcsScene0.showTex=1
+
+#turn on models
+waterTarget.init=1
+waterTarget.run=1
+@SeaState1_fft_lowpitch
+params_gear.watertgt_flag=1
+params_mr.tgt_grnd_eff_flag=1
+vehicleSet.wakemodel_flag=1
+sonarModel.waterTargetFlag=1
+
+#Eric trying it some movement
+waterTargetSet.nomspeed = 0
+waterTargetSet.roll = 0
+
+# operating off of a moving platform
+trajectorySet.gcas = 0
+trajectorySet.ignorePosWow = 1
+innerloopSet.lockOnGround = 1
+
+
+#make gear have more friction
+params_gear.coeff = 10
+params_gear.frcoeff = 2
+#params_gear.Kx = 200;
+#params_gear.Ky = 200;
+
+
+#setup datalink to send m0 and m1 messages
+gcs1PortDatalink1.si_port=43
+gcs1PortDatalink1.port=43
+gcs1PortDatalink1.init=1
+gcs1PortDatalink2.dataSource=0
+gcs1Instance.run=1
+
+
+cd maneuver0
+type    = 2
+hdgMode = 1
+altMode = 0
+x[0] = 285.000000
+x[1] = 500
+x[2] = -20.000000
+psi  = -50.000000
+vnom = 25.000000
+anom = 5.000000
+
+gcsSelect 1
+
+gcsSet.showRPMtext=0
+gcsSet.showMSLtext=0
+gcsSet.showAGLtext=0
+gcsSet.showGroundSpeedText=2
+gcsSet.showRPMtext=0
+gcsSet.showHeading=1
+gcsSet.showTimeText=0
+gcsSet.showMSLtext=0
+gcsSet.showAGLtext=0
+gcsSet.showPlan=0
+
+gcsPanelBox0.color[1]=3  
+gcsPanelBox0.color[7]=3  
+gcsPanelBox2.color[2]=3  
+gcsPanelBox2.color[3]=3  
+gcsPanelBox3.on = 0  
+gcsPanelBox4.on = 0  
+gcsPanelBox5.on = 0
+gcsPanelBox6.color[1]=3  
+gcsPanelBox7.on = 0  
+gcsPanelBox8.on = 0  
+gcsPanelBox9.on = 0  
+gcsPanelBox10.on = 0  
+gcsPanelBox11.on = 0  
+gcsPanelBox12.on = 0  
+gcsPanelBox13.on = 0  
+gcsPanelBox14.on = 0  
+gcsPanelBox15.on = 0  
+gcsPanelBox16.on = 0  
+gcsPanelBox17.on = 0  
+gcsPanelBox18.on = 0  
+gcsPanelBox19.on = 0  
+gcsPanelBox20.on = 0  
+gcsPanelBox21.on = 0  
+gcsPanelBox22.on = 0  
+gcsPanelBox23.on = 0  
+gcsPanelBox24.on = 0  
+
+
+gcsSelect 0
+
+
+
+#Setup the left camera
+scene1.name=Scene 1 Left
+scene1.winw = 672
+scene1.winh = 376
+gcsScene1.viewMode = 5
+scene1.showFrameRate=0
+scene1.showGrid=0
+gcsScene1.showPanel=0
+gcsScene1.showMenu=0
+gcsScene1.showGCStext=0
+gcsScene1.showPlan=1
+gcsScene1.showTex=1
+scene1.showGCS = 0
+scene1.x = 470
+scene1.y = 530
+scene 1
+
+#Setup the right camera
+scene2.name=Scene 2 Right
+scene2.x = 822
+scene2.y = 360
+scene2.winw = 672
+scene2.winh = 376
+scene2.showTruth = 1
+scene2.showGCS   = 0
+scene2.showTex   = 0
+scene2.showMenu  = 0
+scene2.hudOn     = 0
+scene2.showGrid  = 0
+scene2.showFrameRate = 0
+#view mode 5 = cam0, mode 9 is cam2
+gcsScene2.viewMode = 9
+gcsScene2.showPanel=0
+gcsScene2.showMenu=0
+gcsScene2.showGCStext=0
+gcsScene2.showPlan=1
+gcsScene2.showTex=1
+scene 2
+
+
+
+#cameraControl overrides settings in scene
+cameraControl.mode = 3
+cameraControl.hardware = 3
+cameraControl.panCmd = 0
+cameraControl.tiltCmd = 0
+cameraControl.rollCmd = 90
+cameraControl.fovy = 61.875
+cameraControl.fovx = 110
+
+cameraControl2.mode = 3
+cameraControl2.hardware = 3
+cameraControl2.panCmd = 0
+cameraControl2.tiltCmd = 0
+cameraControl2.rollCmd = 90
+cameraControl2.fovy = 61.875
+cameraControl2.fovx = 110
+
+#camera location #xyz position of camera in ft
+#gcsview_camera.zoom = 1.00
+#gcsview_camera.seat[0] = 2.5
+#gcsview_camera.seat[1] = -1.64041995
+#gcsview_camera.seat[2] = 0.5
+
+#gcsview_camera2.zoom = 1.00
+#gcsview_camera2.seat[0] = 2.5
+#gcsview_camera2.seat[1] = -1.77041995
+#gcsview_camera2.seat[2] = 0.5
+
+
+gcsview_camera.zoom = 1.00
+gcsview_camera.seat[0] = 2.5
+gcsview_camera.seat[1] = 0
+gcsview_camera.seat[2] = 0.5
+
+gcsview_camera2.zoom = 1.00
+gcsview_camera2.seat[0] = 2.5
+gcsview_camera2.seat[1] = 0
+gcsview_camera2.seat[2] = 0.63
+ 
+ 
+ 
+trajUpload
+ 
+
+#frame grabber stuff
+fgSimpleGrabber.src  = win:Scene 2 Right
+fgSimpleGrabber2.src = win:Scene 1 Left
+ 
+fgSimple.runfg1=1
+fgSimple.runfg2=1
+fgSimple.showsrc = 1
+fgSimple.showsrc2= 1
+ 
+
+cstart fg
+
+
+#sharkshare stuff
+Ldt.runLdt = 1
+Ldt.shareshark = 1
+
+cstart ldt
