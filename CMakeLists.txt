@@ -3,7 +3,6 @@ set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 MESSAGE( STATUS "CMAKE_MODULE_PATH: " ${CMAKE_MODULE_PATH} )
 project(shark)
 option(USE_ZED "Use ZED for img feed instead of sim" OFF)
-option(USE_GUST "Use GUST alongside for sim andor controller" OFF)
 option(BOOST_TEST "build boost tester as well" OFF)
 option(USE_GPU "Use OCV GPU libs" OFF)
 
@@ -20,16 +19,6 @@ SET(VERSION_REQ_OCV "2.4")
 find_package(OpenCV ${VERSION_REQ_OCV} REQUIRED)
 if(USE_GPU)
 add_definitions(-DGPU)
-endif()
-
-if(USE_GUST)
-
-##BOOST
-SET(VERSION_REQ_BOOST "1.49")
-find_package(Boost ${VERSION_REQ_BOOST} REQUIRED)
-
-add_definitions(-DGUST)
-include_directories(/home/nvidia/Downloads/boost_1_65_1)
 endif()
 
 if(USE_ZED OR BOOST_TEST)
@@ -91,12 +80,6 @@ if(BOOST_TEST)
 				${Boost_LIBRARIES}
 				)
 TARGET_COMPILE_OPTIONS(shark PRIVATE -lrt -pthread) 
-elseif(USE_GUST)
-	TARGET_LINK_LIBRARIES(shark
-				${OpenCV_LIBRARIES}
-				${Boost_LIBRARIES}
-				)
-TARGET_COMPILE_OPTIONS(shark PRIVATE -lrt -lX11 -pthread) 
 elseif(USE_ZED)
 	TARGET_LINK_LIBRARIES(shark
 				${ZED_LIBRARIES}

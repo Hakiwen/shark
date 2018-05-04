@@ -1,8 +1,0 @@
-%include "gcv.dbh"
-
-%Dir ipFg_ref { } gcvGenericFg;  
-%Dir gcvPipe_ref {
-} gcvGeneric;
-
-%Dir gcvTask_ref {
-} gcvTaskGeneric;

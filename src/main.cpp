@@ -18,14 +18,6 @@
 #include <opencv2/gpu/gpu.hpp>
 #endif
 
-#ifdef GUST
-#include <boost/interprocess/shared_memory_object.hpp>
-#include <boost/interprocess/mapped_region.hpp>
-#include <boost/interprocess/sync/scoped_lock.hpp>
-#include <boost/interprocess/sync/interprocess_mutex.hpp>
-#include <boost/interprocess/offset_ptr.hpp>
-using namespace boost::interprocess;
-#endif
 
 using namespace std;
 using namespace cv;
@@ -109,115 +101,6 @@ cv::Vec2f findDepth(OurTarget inputTarget, cv::Mat *inputDepth, int numDepthPoin
 	//TODO Some flan stuff
 
 }
-
-
-
-
-#ifdef GUST
-struct shared_gen_mat
-{
-	boost::interprocess::interprocess_mutex mutex;
-	boost::interprocess::offset_ptr<uchar> dat_off;
-	uchar dat_arr;
-	int height, width;
-};
-
-struct shared_state
-{
-	boost::interprocess::interprocess_mutex mutex;
-	float x, y, z, psi;
-};
-// Could make state a pointer and dereference data instead of making a copy
-void write2GUST(cv::Mat state, shared_state * stateData)
-{
-	// 1,2,3,4
-	scoped_lock<interprocess_mutex> lock(stateData->mutex);
-	stateData->x = state.at<float>(0);
-	stateData->y = state.at<float>(1);
-	stateData->z = state.at<float>(2);
-	stateData->psi = state.at<float>(3);
-
-}
-
-void boostRead(cv::Mat *out_mat, shared_gen_mat * shared_mem_mat, int ocv_dt)
-{
-	do
-	{
-		scoped_lock<interprocess_mutex> l_lock(shared_mem_mat->mutex);
-		*out_mat = cv::Mat(shared_mem_mat->height, shared_mem_mat->width, ocv_dt, shared_mem_mat->dat_off.get()).clone();
-	}
-	while(out_mat->empty());
-}
-
-
-
-
-void generateDisparityMap(cv::Mat *left_img, cv::Mat *right_img, cv::Mat *dep_mat)
-{
-	cv::Mat gray_left_img, gray_right_img;
-	cv::cvtColor(*left_img, gray_left_img, CV_RGB2GRAY);
-	cv::cvtColor(*right_img, gray_right_img, CV_RGB2GRAY);
-	
-	int num_input_channels = 3;
-	int numDisparities = 1024; //multiple of 16
-	int SADWindowSize = 101; //odd 3:11 for SGBM, unbounded for BM
-	int p1_smooth = 8*(num_input_channels*SADWindowSize*SADWindowSize);//penalty on disparity change with neighbor pixels
-	int p2_smooth = 4*p1_smooth; //penalty for non-adjacent pixels, p2_smooth>p1_smooth
-	int disparity_max_diff = -1; //negative disables left-right disparity check
-	int pre_filter_cap = 0; //truncates pixel value changes
-	int uniqueness_ratio = 10;//5-15, winning margin of best compute function
-	int speckle_window_size = 100;//50-200, 0 to disable speckle filtering
-	int speckle_range = 1;
-	
-// 	StereoBM stereo = StereoBM(StereoBM::BASIC_PRESET, numDisparities, SADWindowSize);
-// 	StereoSGBM stereo = StereoSGBM(0, 
-// 					numDisparities, 
-// 					SADWindowSize, 
-// 					p1_smooth, 
-// 					p2_smooth, 
-// 					disparity_max_diff,
-// 					pre_filter_cap,
-// 					uniqueness_ratio,
-// 					speckle_window_size,
-// 					speckle_range
-//       				);
-	StereoSGBM stereo = StereoSGBM(0, numDisparities, SADWindowSize);
-	stereo.operator()(gray_left_img, gray_right_img, *dep_mat);
-	dep_mat->convertTo(*dep_mat, CV_32F);
-	*dep_mat = *dep_mat/16;
-// 	cout << *dep_mat << endl;
-}
-
-void fetchImages(cv::Mat *img_mat, cv::Mat *dep_mat, shared_gen_mat * img1_data, shared_gen_mat * img2_data, shared_gen_mat *dep_data)
-{
-	cv::Mat img1_mat, img2_mat;
-	
-	boostRead(&img1_mat, img1_data, CV_8UC3);
-// 	cout << "got left" << endl;
-	boostRead(&img2_mat, img2_data, CV_8UC3);
-// 	cout << "got right" << endl;
-	boostRead(dep_mat, dep_data, CV_32F);
-// 	cout << "got depth" << endl;
-
-	
-// 	imshow("depth", convert2DisplayDepthMat(dep_mat));
-	
-	
-// 	//transpose(img1_mat, img1_mat);
-// 	flip(img1_mat, img1_mat, 2);
-	//transpose(img2_mat, img2_mat);
-// 	flip(img2_mat, img2_mat, 2);
-// 	imshow("img1", img1_mat);
-// 	imshow("img2", img2_mat);
-	img1_mat.copyTo(*img_mat);
-	
-	
-	
-	//generateDisparityMap(&img1_mat, &img2_mat, dep_mat);
-
-}
-
-#endif
 
 
 #if defined ZED
@@ -532,30 +415,6 @@ int main(int argc, char *argv[])
 	cv::vector<Vec4i> lines_found;
 	cv::vector<Vec4i> validLinesP;
 
-#ifdef GUST
-
-	
-	shared_memory_object shared_memory_image_l(open_only, "SharedMemoryImgL", read_write);
-
-	mapped_region img_region_l(shared_memory_image_l, read_write);
-	shared_gen_mat *img_data_l = new (img_region_l.get_address()) shared_gen_mat;
-	
-	shared_memory_object shared_memory_image_r(open_only, "SharedMemoryImgR", read_write);
-
-	mapped_region img_region_r(shared_memory_image_r, read_write);
-	shared_gen_mat *img_data_r = new (img_region_r.get_address()) shared_gen_mat;
-
-	shared_memory_object shared_memory_depth(open_only, "SharedMemoryDep", read_write);
-
-	mapped_region dep_region(shared_memory_depth, read_write);
-	shared_gen_mat *dep_data = new (dep_region.get_address()) shared_gen_mat;
-	
-	shared_memory_object shared_memory_state(open_only, "SharedMemoryState", read_write);
-
-	mapped_region state_region(shared_memory_state, read_write);
-	shared_state *state_data = new (state_region.get_address()) shared_state;	
-
-#endif
 	//Kalman Filter Nonsense
 	int state_vector_size = 10;
 	int measurement_vector_size = 6;
@@ -652,10 +511,6 @@ int main(int argc, char *argv[])
 
 #ifdef ZED
 		fetchImages(&input_frame_l, &input_frame_d, &zed);
-	
-#elseif GUST
-//TODO readFromGUST
-		fetchImages(&input_frame_l, &input_frame_d, img_data_l, img_data_r, dep_data);
 #endif			
 		input_frame = input_frame_l;
 		
@@ -693,9 +548,6 @@ int main(int argc, char *argv[])
 	
 #ifdef ZED
 		imshow("Out", input_frame_copy);
-#elif defined GUST
-		write2GUST(state, state_data);
-
 #endif
 
 
